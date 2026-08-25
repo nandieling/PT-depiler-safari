@@ -1,0 +1,11 @@
+import "./adapter/indexdb.ts";
+
+import "./utils/logger.ts";
+import "./utils/site.ts";
+import "./utils/search.ts";
+import "./utils/download.ts";
+import "./utils/userInfo.ts";
+import "./utils/backup.ts";
+import "./utils/socialInformation.ts";
+import "./utils/socialRecommendations.ts";
+import "./utils/keepUploadTask.ts";

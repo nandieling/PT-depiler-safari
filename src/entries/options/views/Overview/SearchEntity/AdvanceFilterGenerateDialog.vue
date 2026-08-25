@@ -1,0 +1,365 @@
+<script setup lang="ts">
+/**
+ * 因为 Vuetify 的限制，无法实现  indeterminate -> checked -> unchecked -> indeterminate 的循环切换，
+ * 只能由 indeterminate -> checked <-> unchecked 之间切换，当 checked 是为 required，unchecked 时为 exclude，
+ * 如果需要忽略，目前只能重置过滤词。
+ * refs: https://github.com/vuetifyjs/vuetify/blob/0ca7e93ad011b358591da646fdbd6ebe83625d25/packages/vuetify/src/components/VCheckbox/VCheckboxBtn.tsx#L49-L53
+ */
+import { computed, ref } from "vue";
+import { useI18n } from "vue-i18n";
+import { addDays, startOfDay } from "date-fns";
+import { ETorrentStatus, preDefinedTorrentTagNameSet, sortTorrentTags } from "@ptd/site";
+
+import { formatDate, formatSize } from "@/options/utils.ts";
+import { useConfigStore } from "@/options/stores/config.ts";
+import { tableCustomFilter } from "@/options/views/Overview/SearchEntity/utils/filter.ts";
+import { setDateRangeByDatePicker, getThisDateUnitRange } from "@/options/directives/useAdvanceFilter.ts";
+
+import SiteName from "@/options/components/SiteName.vue";
+import SiteFavicon from "@/options/components/SiteFavicon/Index.vue";
+
+const showDialog = defineModel<boolean>();
+
+const { t } = useI18n();
+const configStore = useConfigStore();
+
+const {
+  advanceItemPropsRef,
+  advanceFilterDictRef,
+  reBuildFilterCountRef,
+  toggleKeywordStateFn,
+  reBuildAdvanceFilter,
+  updateTableFilterValueFn,
+} = tableCustomFilter;
+
+// 种子状态选项 - 使用 i18n 支持
+const statusOptions = [
+  { value: ETorrentStatus.unknown, label: t("torrent.status.unknown"), icon: "mdi-help-circle", color: "grey" },
+  { value: ETorrentStatus.downloading, label: t("torrent.status.downloading"), icon: "mdi-arrow-down", color: "info" },
+  { value: ETorrentStatus.seeding, label: t("torrent.status.seeding"), icon: "mdi-arrow-up", color: "success" },
+  { value: ETorrentStatus.inactive, label: t("torrent.status.inactive"), icon: "mdi-wifi-strength-off", color: "grey" },
+  { value: ETorrentStatus.completed, label: t("torrent.status.completed"), icon: "mdi-check", color: "grey" },
+];
+
+const torrentTags = computed(() => sortTorrentTags(advanceItemPropsRef.value.tags));
+
+const showHiddenTags = ref(false);
+
+const filteredTorrentTags = computed(() => {
+  const hiddenNames = configStore.searchEntifyControl.hiddenTagNames || [];
+  return torrentTags.value.filter((tag) => showHiddenTags.value || !hiddenNames.includes(tag.name));
+});
+
+function updateTableFilter() {
+  updateTableFilterValueFn();
+  showDialog.value = false;
+}
+
+function enterDialog() {
+  reBuildAdvanceFilter();
+}
+</script>
+
+<template>
+  <v-dialog v-model="showDialog" max-width="800" scrollable @after-enter="enterDialog">
+    <v-card>
+      <v-card-title class="pa-0">
+        <v-toolbar color="blue-grey-darken-2">
+          <v-toolbar-title>{{ t("common.AdvanceFilterGenerateDialog.title") }}</v-toolbar-title>
+          <template #append>
+            <v-btn icon="mdi-close" :title="t('common.dialog.close')" @click="showDialog = false" />
+          </template>
+        </v-toolbar>
+      </v-card-title>
+      <v-divider />
+      <v-card-text>
+        <v-container>
+          <v-row
+            ><v-label>{{ t("common.AdvanceFilterGenerateDialog.keywords") }}</v-label>
+          </v-row>
+          <v-row>
+            <v-col cols="12" md="6">
+              <v-combobox
+                v-model="advanceFilterDictRef.text.required"
+                chips
+                hide-details
+                :label="t('common.AdvanceFilterGenerateDialog.required')"
+                multiple
+              />
+            </v-col>
+            <v-col cols="12" md="6">
+              <v-combobox
+                v-model="advanceFilterDictRef.text.exclude"
+                chips
+                hide-details
+                :label="t('common.AdvanceFilterGenerateDialog.exclude')"
+                multiple
+              ></v-combobox>
+            </v-col>
+          </v-row>
+
+          <v-row
+            ><v-label>{{ t("common.AdvanceFilterGenerateDialog.site") }}</v-label></v-row
+          >
+          <v-row>
+            <v-col
+              v-for="site in advanceItemPropsRef.site"
+              :key="`${reBuildFilterCountRef}_${site}`"
+              class="pa-0"
+              cols="6"
+              md="3"
+              sm="4"
+            >
+              <v-checkbox
+                v-model="advanceFilterDictRef.site.required"
+                :label="site"
+                :value="site"
+                density="compact"
+                hide-details
+                indeterminate
+                @click.stop="() => toggleKeywordStateFn('site', site)"
+              >
+                <template #label>
+                  <SiteFavicon :site-id="site" :size="16" class="mr-2" />
+                  <SiteName :class="['text-decoration-none']" :site-id="site" tag="span" />
+                </template>
+              </v-checkbox>
+            </v-col>
+          </v-row>
+
+          <template v-if="configStore.searchEntifyControl.showTorrentTag">
+            <v-row>
+              <v-label>{{ t("SearchEntity.AdvanceFilterGenerateDialog.tags") }}</v-label>
+              <v-spacer />
+              <v-btn
+                v-if="configStore.searchEntifyControl.hiddenTagNames?.length"
+                variant="text"
+                size="x-small"
+                color="info"
+                @click="showHiddenTags = !showHiddenTags"
+              >
+                {{
+                  showHiddenTags
+                    ? t("SearchEntity.AdvanceFilterGenerateDialog.hideHiddenTags")
+                    : t("SearchEntity.AdvanceFilterGenerateDialog.showHiddenTags")
+                }}
+              </v-btn>
+            </v-row>
+            <v-row>
+              <v-col
+                v-for="tag in filteredTorrentTags"
+                :key="`${reBuildFilterCountRef}_${tag.name}`"
+                class="pa-0"
+                cols="4"
+                md="2"
+                sm="3"
+              >
+                <v-checkbox
+                  v-model="advanceFilterDictRef.tags.required"
+                  :value="tag.name"
+                  density="compact"
+                  hide-details
+                  indeterminate
+                  @click.stop="() => toggleKeywordStateFn('tags', tag.name)"
+                >
+                  <template #label>
+                    <v-chip
+                      :color="tag.color"
+                      :prepend-icon="preDefinedTorrentTagNameSet.includes(tag.name) ? 'mdi-pin mdi-rotate-45' : ''"
+                      class="mr-1"
+                      label
+                      size="small"
+                      variant="tonal"
+                    >
+                      {{ tag.name }}
+                    </v-chip>
+                  </template>
+                </v-checkbox>
+              </v-col>
+            </v-row>
+          </template>
+          <v-row
+            ><v-label>{{ t("SearchEntity.AdvanceFilterGenerateDialog.status") }}</v-label></v-row
+          >
+          <v-row>
+            <v-col
+              v-for="status in statusOptions"
+              :key="`${reBuildFilterCountRef}_${status.value}`"
+              class="pa-0"
+              cols="6"
+              md="3"
+              sm="4"
+            >
+              <v-checkbox
+                v-model="advanceFilterDictRef.status.required"
+                :value="status.value"
+                density="compact"
+                hide-details
+                indeterminate
+                @click.stop="() => toggleKeywordStateFn('status', status.value)"
+              >
+                <template #label>
+                  <v-icon :color="status.color" :icon="status.icon" size="small" class="mr-2" />
+                  <span>{{ status.label }}</span>
+                </template>
+              </v-checkbox>
+            </v-col>
+          </v-row>
+          <v-row>
+            <v-col cols="6">
+              <v-row class="pr-4">
+                <v-label>{{ t("common.AdvanceFilterGenerateDialog.date") }}</v-label>
+                <v-spacer />
+                <v-chip
+                  v-for="dateUnit in ['day', 'week', 'month', 'quarter', 'year'] as const"
+                  :key="dateUnit"
+                  size="x-small"
+                  class="mr-1"
+                  @click="
+                    () => (advanceFilterDictRef.time = getThisDateUnitRange(dateUnit, advanceItemPropsRef.time.range))
+                  "
+                >
+                  {{ t(`common.AdvanceFilterGenerateDialog.dateUnit.${dateUnit}`) }}
+                </v-chip>
+                <v-chip size="x-small">
+                  {{ t("common.AdvanceFilterGenerateDialog.dateUnit.custom") }}
+                  <v-menu activator="parent" location="top" :close-on-content-click="false">
+                    <v-date-picker
+                      :max="addDays(new Date(advanceItemPropsRef.time.range[1]), 1)"
+                      :min="startOfDay(new Date(advanceItemPropsRef.time.range[0]))"
+                      hide-header
+                      multiple="range"
+                      show-adjacent-months
+                      @update:model-value="(v) => (advanceFilterDictRef.time = setDateRangeByDatePicker(v))"
+                    ></v-date-picker>
+                  </v-menu>
+                </v-chip>
+              </v-row>
+              <v-row>
+                <v-range-slider
+                  v-model="advanceFilterDictRef.time"
+                  :max="advanceItemPropsRef.time.range[1]"
+                  :min="advanceItemPropsRef.time.range[0]"
+                  :step="60 * 1000"
+                  :thumb-label="true"
+                  :ticks="advanceItemPropsRef.time.ticks"
+                  class="px-6"
+                  hide-details
+                  show-ticks="always"
+                  tick-size="4"
+                >
+                  <template #tick-label></template>
+                  <template #thumb-label="{ modelValue }">
+                    <span class="text-no-wrap">{{ formatDate(modelValue ?? 0, "yyyy-MM-dd HH:mm") }}</span>
+                  </template>
+                </v-range-slider>
+              </v-row>
+            </v-col>
+            <v-col cols="6">
+              <v-row
+                ><v-label>{{ t("SearchEntity.AdvanceFilterGenerateDialog.size") }}</v-label></v-row
+              >
+              <v-row>
+                <v-range-slider
+                  v-model="advanceFilterDictRef.size"
+                  :max="advanceItemPropsRef.size.range[1]"
+                  :min="advanceItemPropsRef.size.range[0]"
+                  :step="1024 ** 3"
+                  :thumb-label="true"
+                  :ticks="advanceItemPropsRef.size.ticks"
+                  class="px-6"
+                  hide-details
+                  show-ticks="always"
+                  tick-size="4"
+                >
+                  <template #tick-label></template>
+                  <template #thumb-label="{ modelValue }">
+                    <span class="text-no-wrap">{{ formatSize(modelValue ?? 0) }}</span>
+                  </template>
+                </v-range-slider>
+              </v-row>
+            </v-col>
+          </v-row>
+          <v-row>
+            <v-col cols="4">
+              <v-row
+                ><v-label>{{ t("SearchEntity.AdvanceFilterGenerateDialog.seeders") }}</v-label></v-row
+              >
+              <v-row>
+                <v-range-slider
+                  v-model="advanceFilterDictRef.seeders"
+                  :max="advanceItemPropsRef.seeders.range[1]"
+                  :min="advanceItemPropsRef.seeders.range[0]"
+                  :thumb-label="true"
+                  :ticks="advanceItemPropsRef.seeders.ticks"
+                  class="px-6"
+                  hide-details
+                  show-ticks="always"
+                  step="1"
+                  tick-size="4"
+                >
+                  <template #tick-label></template>
+                </v-range-slider>
+              </v-row>
+            </v-col>
+            <v-col cols="4">
+              <v-row
+                ><v-label>{{ t("SearchEntity.AdvanceFilterGenerateDialog.leechers") }}</v-label></v-row
+              >
+              <v-row>
+                <v-range-slider
+                  v-model="advanceFilterDictRef.leechers"
+                  :max="advanceItemPropsRef.leechers.range[1]"
+                  :min="advanceItemPropsRef.leechers.range[0]"
+                  :thumb-label="true"
+                  :ticks="advanceItemPropsRef.leechers.ticks"
+                  class="px-6"
+                  hide-details
+                  show-ticks="always"
+                  step="1"
+                  tick-size="4"
+                >
+                  <template #tick-label></template>
+                </v-range-slider>
+              </v-row>
+            </v-col>
+            <v-col cols="4">
+              <v-row
+                ><v-label>{{ t("SearchEntity.AdvanceFilterGenerateDialog.completed") }}</v-label></v-row
+              >
+              <v-row>
+                <v-range-slider
+                  v-model="advanceFilterDictRef.completed"
+                  :max="advanceItemPropsRef.completed.range[1]"
+                  :min="advanceItemPropsRef.completed.range[0]"
+                  :thumb-label="true"
+                  :ticks="advanceItemPropsRef.completed.ticks"
+                  class="px-6"
+                  hide-details
+                  show-ticks="always"
+                  step="1"
+                  tick-size="4"
+                >
+                  <template #tick-label></template>
+                </v-range-slider>
+              </v-row>
+            </v-col>
+          </v-row>
+        </v-container>
+      </v-card-text>
+      <v-divider />
+      <v-card-actions>
+        <v-btn variant="text" @click="() => reBuildAdvanceFilter(true)">{{
+          t("common.AdvanceFilterGenerateDialog.reset")
+        }}</v-btn>
+        <v-spacer />
+        <v-btn color="error" variant="text" @click="showDialog = false">{{ t("common.dialog.cancel") }}</v-btn>
+        <v-btn color="primary" variant="text" @click="updateTableFilter">{{
+          t("common.AdvanceFilterGenerateDialog.generate")
+        }}</v-btn>
+      </v-card-actions>
+    </v-card>
+  </v-dialog>
+</template>
+
+<style scoped lang="scss"></style>

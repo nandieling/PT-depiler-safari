@@ -1,0 +1,406 @@
+import Sizzle from "sizzle";
+import Gazelle, { SchemaMetadata } from "../schemas/Gazelle.ts";
+import { parseValidTimeString, parseSizeString, buildCategoryOptionsFromList } from "../utils";
+import type { ISiteMetadata, ITorrent, ISearchInput } from "../types";
+import { ETorrentStatus, NoTorrentsError } from "../types";
+
+export const siteMetadata: ISiteMetadata = {
+  ...SchemaMetadata,
+  version: 1,
+  id: "passthepopcorn",
+  name: "PassThePopcorn",
+  aka: ["PTP"],
+  description: "PassThePopcorn (PTP) is a Private site for MOVIES",
+  tags: ["电影"],
+  timezoneOffset: "+0000",
+  collaborator: ["lengmianxia", "birdplane", "enigmaz"],
+  type: "private",
+  schema: "Gazelle",
+  urls: ["https://passthepopcorn.me/"],
+
+  // 搜索分类
+  category: [
+    {
+      name: "Category",
+      key: "filter_cat",
+      options: [
+        { value: 1, name: "Feature Film" },
+        { value: 2, name: "Short Film" },
+        { value: 3, name: "Miniseries" },
+        { value: 4, name: "Stand-up Comedy" },
+        { value: 5, name: "Live Performance" },
+        { value: 6, name: "Movie Collection" },
+      ],
+      cross: { mode: "appendQuote" },
+    },
+    {
+      name: "Container",
+      key: "encoding",
+      options: buildCategoryOptionsFromList(["AVI", "MPG", "MKV", "MP4", "VOB IFO", "ISO", "m2ts"]),
+    },
+    {
+      name: "Codec",
+      key: "format",
+      options: buildCategoryOptionsFromList([
+        ["XviD", "DivX", "H.264", "x264", "H.265", "x265"],
+        ["DVD5", "DVD9", "BD25", "BD50", "BD66", "BD100"],
+      ]),
+    },
+    {
+      name: "Source",
+      key: "media",
+      options: buildCategoryOptionsFromList([
+        ["CAM", "TS", "R5", "DVD-Screener", "VHS", "WEB"],
+        ["DVD", "TV", "HDTV", "HD-DVD", "Blu-ray"],
+      ]),
+    },
+    {
+      name: "Resolution",
+      key: "resolution",
+      options: [
+        { value: "anysd", name: "Any SD" },
+        { value: "anyhd", name: "Any HD" },
+        { value: "anyhdplus", name: "Any HD+" },
+        { value: "anyuhd", name: "Any UHD" },
+        ...buildCategoryOptionsFromList(["NTSC", "PAL", "480p", "576p", "720p", "1080i", "1080p", "2160p"]),
+      ],
+    },
+    {
+      name: "Release type",
+      key: "scene",
+      options: [
+        { value: "2", name: "Golden Popcorn" },
+        { value: "3", name: "Personal" },
+        { value: "4", name: "Personal GP" },
+        { value: "0", name: "Non-Scene" },
+        { value: "1", name: "Scene" },
+      ],
+    },
+    {
+      name: "Leech type",
+      key: "freetorrent",
+      options: [
+        { value: "0", name: "Normal" },
+        { value: "1", name: "Free" },
+        { value: "2", name: "Half" },
+        { value: "3", name: "Neutral" },
+        { value: "4", name: "Any X-Leech" },
+      ],
+    },
+    /* {
+      name: "Grouping",
+      key: "grouping",
+      options: [
+        { value: "1", name: "Yes" },
+        { value: "0", name: "No"},
+      ],
+    }, */
+  ],
+
+  search: {
+    ...SchemaMetadata.search!,
+    requestConfig: {
+      url: "/torrents.php",
+      responseType: "document",
+      params: { noredirect: 1, grouping: 0 },
+    },
+    selectors: {},
+  },
+
+  userInfo: {
+    ...SchemaMetadata.userInfo!,
+    process: [
+      {
+        requestConfig: { url: "/index.php", responseType: "document" },
+        fields: ["id", "name", "messageCount"],
+      },
+      {
+        requestConfig: {
+          url: "/user.php",
+          params: {
+            /* id: flushUserInfo.id */
+          },
+          responseType: "document",
+        },
+        assertion: { id: "params.id" },
+        fields: [
+          "uploaded",
+          "downloaded",
+          "ratio",
+          "levelName",
+          "bonus",
+          "bonusPerHour",
+          "joinTime", // Gazelle 基础项
+          "seeding",
+          "seedingSize",
+          "uploads",
+        ],
+      },
+    ],
+    selectors: {
+      ...SchemaMetadata.userInfo!.selectors!,
+      id: {
+        ...SchemaMetadata.userInfo!.selectors!.id!,
+        selector: ["a[href*='user.php?id=']:first"],
+      },
+      name: {
+        selector: ["a[href*='user.php?id=']:first"],
+      },
+      uploaded: {
+        ...SchemaMetadata.userInfo!.selectors!.uploaded!,
+        selector: "div.panel__heading:contains('Stats') + div.panel__body > ul.list > li:contains('Uploaded:')",
+      },
+      downloaded: {
+        ...SchemaMetadata.userInfo!.selectors!.downloaded!,
+        selector: "div.panel__heading:contains('Stats') + div.panel__body > ul.list > li:contains('Downloaded:')",
+      },
+      ratio: {
+        ...SchemaMetadata.userInfo!.selectors!.ratio!,
+        selector: "div.panel__heading:contains('Stats') + div.panel__body > ul.list > li:contains('Ratio:')",
+      },
+      levelName: {
+        ...SchemaMetadata.userInfo!.selectors!.levelName!,
+        selector: "div.panel__heading:contains('Personal') + div.panel__body > ul.list > li:contains('Class:')",
+      },
+      bonus: {
+        selector: "div.panel__heading:contains('Stats') + div.panel__body > ul.list > li:contains('Points:')",
+        filters: [
+          (query: string) => {
+            query = query.replace(/,/g, "");
+            const queryMatch = query.match(/Points.+?([\d.]+)/);
+            return queryMatch && queryMatch.length >= 2 ? parseFloat(queryMatch[1]) : 0;
+          },
+        ],
+      },
+      bonusPerHour: {
+        selector: "div.panel__heading:contains('Stats') + div.panel__body > ul.list > li:contains('Points per hour:')",
+        filters: [
+          (query: string) => {
+            query = query.replace(/,/g, "");
+            const queryMatch = query.match(/Points per hour.+?([\d.]+)/);
+            return queryMatch && queryMatch.length >= 2 ? parseFloat(queryMatch[1]) : 0;
+          },
+        ],
+      },
+      joinTime: {
+        selector: ["div.panel__heading:contains('Stats') + div.panel__body > ul.list > li:contains('Joined:') > span"],
+        elementProcess: (element: HTMLElement) => {
+          const query = (element.getAttribute("title") || element.innerText).trim();
+          return parseValidTimeString(query, ["MMM dd yyyy, HH:mm"]);
+        },
+      },
+      seeding: {
+        selector: ["div.panel__heading:contains('Community') + div.panel__body > ul.list > li:contains('Seeding:')"],
+        filters: [
+          (query: string) => {
+            query = query.replace(/,/g, "");
+            const queryMatch = query.match(/Seeding.+?([\d.]+)/);
+            return queryMatch && queryMatch.length >= 2 ? parseFloat(queryMatch[1]) : 0;
+          },
+        ],
+      },
+      seedingSize: {
+        selector: [
+          "div.panel__heading:contains('Community') + div.panel__body > ul.list > li:contains('Seeding size:')",
+        ],
+        filters: [
+          (query: string) => {
+            const queryMatch = query.replace(/,/g, "").match(/Seeding size.+?([\d.]+ ?[ZEPTGMK]?i?B)/);
+            return queryMatch && queryMatch.length >= 2 ? parseSizeString(queryMatch[1]) : 0;
+          },
+        ],
+      },
+      uploads: {
+        selector: ["div.panel__heading:contains('Community') + div.panel__body > ul.list > li:contains('Uploaded:')"],
+        filters: [
+          (query: string) => {
+            const queryMatch = query.replace(/,/g, "").match(/Uploaded:.+?([\d]+)/);
+            return queryMatch && queryMatch.length >= 2 ? parseFloat(queryMatch[1]) : 0;
+          },
+        ],
+      },
+    },
+  },
+
+  levelRequirements: [
+    {
+      id: 1,
+      name: "User",
+      privilege: "Upload torrents. Download torrents",
+    },
+    {
+      id: 2,
+      name: "Member",
+      interval: "P1W",
+      uploaded: "40GB",
+      ratio: 1.05,
+      privilege: "Create requests. Hide username from peerlists. Download a .zip file of snatches on their profile",
+    },
+    {
+      id: 3,
+      name: "Power User",
+      nameAka: ["PU"],
+      interval: "P4W",
+      uploaded: "80GB",
+      ratio: 1.05,
+      uploads: 1,
+      isKept: true,
+      privilege:
+        "Immunity to inactivity pruning. Access to PU forums. Access to invite forums. Freeleech access in advanced search. Can send bonus points to other users. Can edit movie group information. Access to on-site notifications. Access to the IRC announce channels. Create collections and edit existing ones",
+    },
+    {
+      id: 4,
+      name: "Elite",
+      interval: "P10W",
+      uploaded: "500GB",
+      ratio: 1.05,
+      uploads: 50,
+      isKept: true,
+      privilege: "Access to Elite forums. Can purchase invites from the bonus point store",
+    },
+    {
+      id: 5,
+      name: "Torrent Master",
+      nameAka: ["TM"],
+      interval: "P16W",
+      uploaded: "1TB",
+      ratio: 1.05,
+      uploads: 200,
+      isKept: true,
+      privilege: "Access to TM forums. Receive 2 invites per month",
+    },
+    {
+      id: 6,
+      name: "Torrent King",
+      nameAka: ["TK"],
+      interval: "P24W",
+      uploaded: "5TB",
+      ratio: 1.05,
+      uploads: 500,
+      isKept: true,
+      privilege:
+        "Can create personal collections to feature on their profile. Granted ability to double post in forums. Unlimited search and log results. Immunity from ratio-based demotion",
+    },
+    {
+      id: 7,
+      name: "Custom Class",
+      nameAka: ["CC"],
+      interval: "P36W",
+      uploaded: "10TB",
+      ratio: 1.05,
+      uploads: 1000,
+      isKept: true,
+      privilege: "Can chose their own class title. Immunity from ratio-based demotion",
+    },
+  ],
+};
+
+export default class PassThePopcorn extends Gazelle {
+  protected createTempDiv(rawHtml: string): HTMLDivElement {
+    const tempDiv = document.createElement("div");
+    tempDiv.innerHTML = rawHtml;
+    return tempDiv;
+  }
+  protected parsePageData(movie: any, authKey: string, torrentPass: string): Partial<ITorrent> {
+    const torrent = movie.GroupingQualities?.[0]?.Torrents?.[0];
+    const movieId = movie.GroupId || "";
+    const movieName = movie.Title || "";
+    const movieYear = movie.Year || "";
+    const movieImdbId = movie.ImdbId ? `tt${movie.ImdbId}` : "";
+    const category = movie.CategoryName || "";
+    if (torrent) {
+      const id = torrent.TorrentId;
+      const tempTitleDiv = this.createTempDiv(torrent.Title);
+      const rawTitle = Sizzle("a", tempTitleDiv)[0]?.getAttribute("title") || "";
+      const titleParts = rawTitle.split("\n");
+      const title = titleParts.length > 1 ? titleParts[1].trim() : rawTitle.trim();
+      const subTitlePart = Sizzle("a", tempTitleDiv)[0]?.textContent?.trim() || "";
+      const subTitle = `${movieName} ${movieYear} ${movieImdbId} ${subTitlePart}`.trim();
+
+      const url = `${this.url}torrents.php?id=${movieId}&torrentid=${id}`;
+      const link = `${this.url}torrents.php?action=download&id=${id}&authkey=${authKey}&torrent_pass=${torrentPass}`;
+
+      const tempTimeDiv = this.createTempDiv(torrent.Time);
+      const timeStr = Sizzle("span", tempTimeDiv)[0]?.getAttribute("title") || "";
+      const time = parseValidTimeString(timeStr, ["MMM dd yyyy, HH:mm"]) as number;
+      const size = parseSizeString(torrent.Size);
+      const seeders = parseFloat(torrent.Seeders);
+      const leechers = parseFloat(torrent.Leechers);
+      const completed = parseFloat(torrent.Snatched);
+
+      const colorType = torrent.ColorType;
+      let status = ETorrentStatus.unknown;
+      let progress = 0;
+      switch (colorType) {
+        case "seeding":
+          status = ETorrentStatus.seeding;
+          progress = 100;
+          break;
+        case "snatched":
+          status = ETorrentStatus.completed;
+          progress = 100;
+          break;
+        case "downloaded":
+          status = ETorrentStatus.inactive;
+          break;
+      }
+
+      return {
+        site: this.metadata.id,
+        id,
+        category,
+        title,
+        subTitle,
+        url,
+        link,
+        time,
+        size,
+        seeders,
+        leechers,
+        completed,
+        status,
+        progress,
+      };
+    }
+    return {};
+  }
+  public override async transformSearchPage(doc: Document, searchConfig: ISearchInput): Promise<ITorrent[]> {
+    const torrents: ITorrent[] = [];
+
+    const scripts = Sizzle("script", doc) as HTMLScriptElement[];
+    let pageDataContent = "";
+    for (const script of scripts) {
+      if (script.textContent?.includes("var PageData")) {
+        pageDataContent = script.textContent;
+        break;
+      }
+    }
+    let pageData: any = {};
+    if (pageDataContent) {
+      const pageDataMatch = pageDataContent.match(/var PageData\s*=\s*({.*?});/s);
+      if (pageDataMatch && pageDataMatch[1]) {
+        try {
+          pageData = JSON.parse(pageDataMatch[1]);
+        } catch (error) {
+          console.error("[Site] PassThePopcorn Error parsing PageData:", error);
+        }
+      }
+    }
+
+    if (Array.isArray(pageData?.Movies)) {
+      const authKey = pageData.AuthKey;
+      const torrentPass = pageData.TorrentPass;
+      pageData.Movies.forEach((movie: any) => {
+        const torrent = this.parsePageData(movie, authKey, torrentPass) as ITorrent;
+        if (torrent.id && torrent.title && torrent.link) {
+          torrents.push(torrent);
+        }
+      });
+    }
+    if (torrents.length === 0) {
+      throw new NoTorrentsError();
+    }
+
+    return torrents;
+  }
+}

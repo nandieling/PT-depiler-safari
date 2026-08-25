@@ -1,0 +1,4 @@
+@import "vuetify";
+
+@import "../shared/common.scss";
+@import "./main.scss";

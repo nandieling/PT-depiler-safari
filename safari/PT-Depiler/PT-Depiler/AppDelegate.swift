@@ -1,0 +1,21 @@
+//
+//  AppDelegate.swift
+//  PT-Depiler
+//
+//  Created by nan on 2026/8/15.
+//
+
+import Cocoa
+
+@main
+class AppDelegate: NSObject, NSApplicationDelegate {
+
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        // Override point for customization after application launch.
+    }
+
+    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
+        return true
+    }
+
+}

@@ -1,0 +1,164 @@
+<script setup lang="ts">
+import { useI18n } from "vue-i18n";
+import { ref, shallowRef } from "vue";
+import type { IBackupFileInfo } from "@ptd/backupServer";
+import type { DataTableHeader } from "vuetify";
+
+import { sendMessage } from "@/messages.ts";
+import { formatDate, formatSize } from "@/options/utils.ts";
+import { useRuntimeStore } from "@/options/stores/runtime.ts";
+import { useMetadataStore } from "@/options/stores/metadata.ts";
+
+import DeleteDialog from "@/options/components/DeleteDialog.vue";
+import NavButton from "@/options/components/NavButton.vue";
+import RestoreDialog from "./RestoreDialog.vue";
+
+const showDialog = defineModel<boolean>();
+const { backupServerId } = defineProps<{
+  backupServerId: string;
+}>();
+
+const { t } = useI18n();
+const metadataStore = useMetadataStore();
+const runtimeStore = useRuntimeStore();
+
+const isLoading = ref<boolean>(false);
+const backupHistory = shallowRef<IBackupFileInfo[]>([]);
+
+const tableHeaders = [
+  { title: t("SetBackup.HistoryDialog.table.filename"), key: "filename", align: "start" },
+  { title: t("SetBackup.HistoryDialog.table.size"), key: "size", align: "end" },
+  { title: t("SetBackup.HistoryDialog.table.time"), key: "time", align: "start" },
+  { title: t("common.action"), key: "action", sortable: false },
+] as DataTableHeader[];
+const tableSelected = ref<string[]>([]);
+
+const showRestoreDialog = ref<boolean>(false);
+const restoreMetadata = ref<{ type: "remote"; server: string; path: string }>({ type: "remote", server: "", path: "" });
+function restoreBackup(path: string) {
+  restoreMetadata.value = { type: "remote", server: backupServerId, path };
+  showRestoreDialog.value = true;
+}
+
+const showDeleteDialog = ref<boolean>(false);
+const toDeleteBackupHistory = ref<string[]>([]);
+async function deleteBackupHistory(paths: string[]) {
+  showDeleteDialog.value = true;
+  toDeleteBackupHistory.value = paths;
+}
+
+async function confirmDeleteBackupHistory(toDeleteId: string) {
+  const toDeleteName = backupHistory.value.find((item) => item.path === toDeleteId)?.filename ?? toDeleteId;
+  const deleteStatus = await sendMessage("deleteBackupHistory", { path: toDeleteId, backupServerId });
+  if (!deleteStatus) {
+    runtimeStore.showSnakebar(t("SetBackup.HistoryDialog.deleteFailure", { name: toDeleteName }), { color: "error" });
+  } else {
+    runtimeStore.showSnakebar(t("SetBackup.HistoryDialog.deleteSuccess", { name: toDeleteName }), { color: "success" });
+    backupHistory.value = backupHistory.value.filter((item) => item.path !== toDeleteId);
+  }
+}
+
+async function loadBackupHistory() {
+  isLoading.value = true;
+  try {
+    backupHistory.value = await sendMessage("getBackupHistory", backupServerId);
+  } catch (e) {
+    console.error("获取备份历史失败", e);
+  } finally {
+    isLoading.value = false;
+  }
+}
+
+async function dialogEnter() {
+  // noinspection ES6MissingAwait
+  loadBackupHistory();
+}
+
+async function dialogLeave() {
+  backupHistory.value = [];
+  tableSelected.value = [];
+}
+</script>
+
+<template>
+  <v-dialog v-model="showDialog" max-width="1000" @after-enter="dialogEnter" @after-leave="dialogLeave">
+    <v-card>
+      <v-card-title class="pa-0">
+        <v-toolbar color="blue-grey-darken-2">
+          <v-toolbar-title>
+            {{
+              t("SetBackup.HistoryDialog.title", {
+                name: metadataStore.backupServers[backupServerId].name ?? backupServerId,
+              })
+            }}
+          </v-toolbar-title>
+          <template #append>
+            <v-btn icon="mdi-close" :title="t('common.dialog.close')" @click="showDialog = false" />
+          </template>
+        </v-toolbar>
+      </v-card-title>
+      <v-divider />
+      <v-card-text>
+        <NavButton
+          :disabled="tableSelected.length === 0"
+          :text="t('common.remove')"
+          color="error"
+          icon="mdi-delete"
+          @click="deleteBackupHistory(tableSelected)"
+        />
+
+        <v-data-table
+          v-model="tableSelected"
+          :headers="tableHeaders"
+          :items="backupHistory"
+          :sort-by="[{ key: 'time', order: 'desc' }]"
+          :loading="isLoading"
+          class="table-header-no-wrap table-stripe"
+          item-value="path"
+          must-sort
+          show-select
+        >
+          <template #item.size="{ item }">
+            <span class="text-no-wrap">
+              {{ item.size !== "N/A" ? formatSize(item.size) : item.size }}
+            </span>
+          </template>
+
+          <template #item.time="{ item }">
+            <span class="text-no-wrap">{{ formatDate(item.time) }}</span>
+          </template>
+
+          <template #item.action="{ item }">
+            <v-btn-group class="table-action" density="compact" variant="plain">
+              <v-btn
+                :title="t('SetBackup.HistoryDialog.restore')"
+                color="blue"
+                icon="mdi-cloud-download"
+                size="small"
+                @click="restoreBackup(item.path)"
+              />
+
+              <v-btn
+                :title="t('common.remove')"
+                color="error"
+                icon="mdi-delete"
+                size="small"
+                @click="deleteBackupHistory([item.path])"
+              />
+            </v-btn-group>
+          </template>
+        </v-data-table>
+      </v-card-text>
+    </v-card>
+  </v-dialog>
+
+  <RestoreDialog v-model="showRestoreDialog" :restore-metadata="restoreMetadata" />
+  <DeleteDialog
+    v-model="showDeleteDialog"
+    :confirm-delete="confirmDeleteBackupHistory"
+    :to-delete-ids="toDeleteBackupHistory"
+    @all-delete="loadBackupHistory"
+  />
+</template>
+
+<style scoped lang="scss"></style>

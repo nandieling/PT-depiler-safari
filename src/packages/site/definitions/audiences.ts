@@ -1,0 +1,496 @@
+/**
+ * @JackettDefinitions https://github.com/Jackett/Jackett/blob/master/src/Jackett.Common/Definitions/audiences.yml
+ * @JackettIssue https://github.com/Jackett/Jackett/issues/13156
+ */
+import Sizzle from "sizzle";
+import { mergeWith } from "es-toolkit";
+import { ETorrentStatus, type IElementQuery, type ISiteMetadata, type IUserInfo } from "../types";
+import NexusPHP, {
+  CategoryInclbookmarked,
+  CategoryIncldead,
+  CategorySpstate,
+  SchemaMetadata,
+} from "../schemas/NexusPHP.ts";
+import { createDocument, parseSizeString, parseValidTimeString, rot13, tryToNumber } from "../utils";
+import { set } from "es-toolkit/compat";
+
+const AudiencesBaseLinkQuery: IElementQuery = {
+  selector: [
+    "a.torrent-row-action-link--download[href*='download.php?id=']",
+    "a[href*='download.php?id=']:has(i.fa-download)",
+    "a[href*='download.php?id='][title*='下载']",
+    "a[href*='download.php?id='][title*='Download']",
+  ],
+  attr: "href",
+} as const;
+
+export const siteMetadata: ISiteMetadata = {
+  ...SchemaMetadata,
+
+  version: 1,
+  id: "audiences",
+  name: "Audiences",
+  aka: ["观众", "人人人"],
+  description: "观众",
+  tags: ["综合", "影视", "音乐", "电子书", "有声书", "体育", "游戏"],
+  timezoneOffset: "+0800",
+
+  collaborator: ["hui-shao"],
+
+  type: "private",
+  schema: "NexusPHP",
+
+  urls: ["uggcf://nhqvraprf.zr/"],
+
+  category: [
+    {
+      name: "类型",
+      key: "cat",
+      options: [
+        { name: "电影 (Movie)", value: 401 },
+        { name: "剧集 (TV Series)", value: 402 },
+        { name: "综艺 (TV Show)", value: 403 },
+        { name: "纪录片 (Documentary)", value: 406 },
+        { name: "有声书 (Audiobook)", value: 404 },
+        { name: "电子书 (E-Book)", value: 405 },
+        { name: "音乐 (Music)", value: 408 },
+        { name: "体育 (Sport)", value: 407 },
+        { name: "游戏 (Game)", value: 410 },
+        { name: "教学 (Study)", value: 412 },
+        { name: "其它 (Other)", value: 409 },
+      ],
+      cross: { mode: "append" },
+    },
+    {
+      name: "媒介",
+      key: "medium",
+      options: [
+        { name: "UHD Blu-ray 原盘", value: 12 },
+        { name: "UHD Blu-ray DIY", value: 13 },
+        { name: "Blu-ray 原盘", value: 1 },
+        { name: "Blu-ray DIY", value: 14 },
+        { name: "REMUX", value: 3 },
+        { name: "Encode", value: 15 },
+        { name: "HDTV", value: 5 },
+        { name: "WEB-DL", value: 10 },
+        { name: "DVD 原盘", value: 2 },
+        { name: "CD", value: 8 },
+        { name: "Track", value: 9 },
+        { name: "Other", value: 11 },
+      ],
+      cross: { mode: "append" },
+    },
+    {
+      name: "制作组",
+      key: "team",
+      options: [
+        { name: "Audies", value: 19 },
+        { name: "ADE", value: 21 },
+        { name: "ADWeb", value: 20 },
+        { name: "ADAudio", value: 23 },
+        { name: "ADeBook", value: 24 },
+        { name: "ADMusic", value: 25 },
+        { name: "Other", value: 5 },
+      ],
+      cross: { mode: "append" },
+    },
+    CategoryIncldead,
+    CategorySpstate,
+    CategoryInclbookmarked,
+  ],
+
+  officialGroupPattern: [/(-Audies|.*@Audies|-ADE|-ADWeb|.*@ADWeb)/i],
+
+  search: {
+    ...SchemaMetadata.search!,
+    advanceKeywordParams: {
+      ...SchemaMetadata.search?.advanceKeywordParams!,
+      douban: {
+        requestConfigTransformer: ({ requestConfig: config }) => {
+          set(config!, "params.search_area", 5); // params "&search_area=4"
+          return config!;
+        },
+      },
+    },
+    selectors: {
+      ...SchemaMetadata.search!.selectors!,
+      rows: {
+        selector: ["table.torrents-table > tbody > tr[data-torrent-id]"],
+      },
+      link: AudiencesBaseLinkQuery, // 种子下载链接
+      url: {
+        ...AudiencesBaseLinkQuery,
+        filters: [
+          { name: "querystring", args: ["id"] },
+          { name: "prepend", args: ["/details.php?id="] },
+        ],
+      }, // 种子页面链接
+      id: {
+        ...AudiencesBaseLinkQuery,
+        filters: [{ name: "querystring", args: ["id"] }],
+      },
+      subTitle: {
+        selector: ["td.embedded:first > span:last"],
+      },
+      author: {
+        selector: ["td.torrent-uploader-col"], // 发布者
+      },
+      comments: {
+        text: 0,
+        selector: ["> td a[href*='comment']"], // 评论数
+        filters: [{ name: "parseNumber" }],
+      },
+      completed: {
+        text: 0,
+        selector: ["> td:nth-of-type(8)"], // 完成数
+        filters: [{ name: "parseNumber" }],
+      },
+      leechers: {
+        text: 0,
+        selector: ["> td:nth-of-type(7)"], // 下载数
+        filters: [{ name: "parseNumber" }],
+      },
+      seeders: {
+        text: 0,
+        selector: ["> td:nth-of-type(6)"], // 种子数
+        filters: [{ name: "parseNumber" }],
+      },
+      size: {
+        text: 0,
+        selector: ["> td:nth-of-type(5)"], // 大小
+        filters: [{ name: "parseSize" }],
+      },
+      time: {
+        ...SchemaMetadata.search!.selectors!.time!, // 继承 elementProcess 方法
+        selector: ["> td:nth-of-type(4)"], // 限定范围
+      },
+      progress: {
+        selector: ["td.torrent-progress-cell span.torrent-progress-value"],
+        filters: [{ name: "replace", args: ["%", ""] }, { name: "parseNumber" }],
+      },
+      status: {
+        text: ETorrentStatus.unknown,
+        selector: ["td.torrent-progress-cell > span.torrent-progress-badge"],
+        case: {
+          ".torrent-progress-badge--seeding": ETorrentStatus.seeding,
+          ".torrent-progress-badge--completed": ETorrentStatus.completed,
+          ".torrent-progress-badge--incomplete": ETorrentStatus.inactive,
+          ".torrent-progress-badge--downloading": ETorrentStatus.downloading,
+        },
+      },
+      tags: [
+        ...SchemaMetadata.search!.selectors!.tags!,
+        { name: "官方", selector: "span.tags.tgf", color: "#06c" },
+        { name: "原创", selector: "span.tags.tyc", color: "#085" },
+        { name: "国语", selector: "span.tags.tgy", color: "#f96" },
+        { name: "粤语", selector: "span.tags.tyc", color: "#f66" },
+        { name: "中字", selector: "span.tags.tzz", color: "#9c0" },
+        { name: "官字组", selector: "span.tags.tgz", color: "#530" },
+        { name: "DIY", selector: "span.tags.tdiy", color: "#993" },
+        { name: "动画", selector: "span.tags.tdh", color: "#f596aa" },
+        { name: "完结", selector: "span.tags.twj", color: "#4382ff" },
+        { name: "Dolby Vision", selector: "span.tags.tdb", color: "#358" },
+        { name: "HDR10", selector: "span.tags.thdr10", color: "#9a3" },
+        { name: "HDR10+", selector: "span.tags.thdrm", color: "#9b5" },
+        { name: "禁转", selector: "span.tags.tjz", color: "#903" },
+        { name: "限转", selector: "span.tags.txz", color: "#c03" },
+        { name: "首发", selector: "span.tags.tsf", color: "#339" },
+        { name: "应求", selector: "span.tags.tyq", color: "#f90" },
+        { name: "零魔", selector: "span.tags.tm0", color: "#096" },
+        { name: "MV", selector: "span.tags.tmv", color: "turquoise" },
+        { name: "卡拉OK", selector: "span.tags.tok", color: "#ff3f33" },
+        { name: "LIVE现场", selector: "span.tags.tlive", color: "#ff46ed" },
+        { name: "演唱会", selector: "span.tags.tconcert", color: "#3b64ff" },
+        { name: "音乐专辑", selector: "span.tags.tyzj", color: "#87007e" },
+      ],
+    },
+  },
+
+  userInfo: {
+    ...SchemaMetadata.userInfo!,
+    selectors: {
+      ...SchemaMetadata.userInfo!.selectors!,
+      messageCount: {
+        text: 0,
+        selector: [
+          ".site-userbar__compact-tool--has-unread .site-userbar__compact-tool-badge--unread",
+          "td[style*='background: red'] a[href*='messages.php']",
+        ],
+        filters: [{ name: "parseNumber" }],
+      },
+      uploaded: {
+        text: 0,
+        selector: [
+          ".site-userbar__compact-metric--uploaded",
+          ...([] as string[]).concat(SchemaMetadata.userInfo!.selectors!.uploaded!.selector!),
+        ],
+        filters: [
+          (query: string) => {
+            query = query.replace(/,/g, "");
+            const queryMatch = query.match(/(上[传傳]量|Uploaded).+?([\d.]+ ?[ZEPTGMK]?i?B)/);
+            return parseSizeString(queryMatch?.[2] ?? query);
+          },
+        ],
+      },
+      downloaded: {
+        text: 0,
+        selector: [
+          ".site-userbar__compact-metric--downloaded",
+          ...([] as string[]).concat(SchemaMetadata.userInfo!.selectors!.downloaded!.selector!),
+        ],
+        filters: [
+          (query: string) => {
+            query = query.replace(/,/g, "");
+            const queryMatch = query.match(/(下[载載]量|Downloaded).+?([\d.]+ ?[ZEPTGMK]?i?B)/);
+            return parseSizeString(queryMatch?.[2] ?? query);
+          },
+        ],
+      },
+      ratio: {
+        text: 0,
+        selector: [".site-userbar__compact-metric--ratio"],
+        filters: [{ name: "parseNumber" }],
+      },
+      levelName: {
+        selector: ["div.ud-hero span.ud-class > b"],
+        attr: "class",
+        filters: [{ name: "replace", args: ["_Name", ""] }],
+      },
+      bonus: {
+        selector: [
+          ".site-userbar__compact-metric--bonus",
+          "td.rowhead:contains('爆米花') + td",
+          "td.rowhead:contains('Karma Points') + td",
+        ],
+        filters: [{ name: "parseNumber" }],
+      },
+      bonusPerHour: {
+        selector: [
+          ".mybonus-side__rate",
+          ...([] as string[]).concat(SchemaMetadata.userInfo!.selectors!.bonusPerHour!.selector!),
+        ],
+        filters: [
+          (query: string) => {
+            const queryMatch = query.match(
+              /(?:你当前每小时能获取|你當前每小時能獲取|You are currently getting)\s*([\d.,]+)/,
+            );
+            return tryToNumber(queryMatch?.[1] ?? query);
+          },
+        ],
+      },
+      seedingBonus: {
+        selector: [
+          ".site-userbar__compact-metric--seeding-bonus",
+          ...([] as string[]).concat(SchemaMetadata.userInfo!.selectors!.seedingBonus!.selector!),
+        ],
+        filters: [{ name: "parseNumber" }],
+      },
+      joinTime: {
+        selector: [
+          ...([] as string[]).concat(SchemaMetadata.userInfo!.selectors!.joinTime!.selector!),
+          "td:contains('加入日期：')",
+          "div:contains('加入日期：')",
+        ],
+        filters: [
+          (query: string) => {
+            const queryMatch = query.match(/加入日期[：:]\s*([^(]+?)(?:\s*\(|最近[动動]向|$)/);
+            query = queryMatch?.[1] ?? query.split(" (")[0];
+            return parseValidTimeString(query);
+          },
+        ],
+      },
+      lastAccessAt: {
+        selector: [
+          ...([] as string[]).concat(SchemaMetadata.userInfo!.selectors!.lastAccessAt!.selector!),
+          "td:contains('最近动向：')",
+          "td:contains('最近動向：')",
+          "div:contains('最近动向：')",
+          "div:contains('最近動向：')",
+        ],
+        filters: [
+          (query: string) => {
+            const queryMatch = query.match(/最近[动動]向[：:]\s*([^(]+?)(?:\s*\(|$)/);
+            query = queryMatch?.[1] ?? query.split("(")[0];
+            return parseValidTimeString(query);
+          },
+        ],
+      },
+      seeding: {
+        selector: [".site-userbar__compact-metric-inline-link--seeding"],
+        filters: [{ name: "parseNumber" }],
+      },
+      leeching: {
+        selector: [".site-userbar__compact-metric-inline-link--leeching"],
+        filters: [{ name: "parseNumber" }],
+      },
+      hnrPreWarning: {
+        text: 0,
+        selector: [".site-userbar__compact-metric--hr", "#info_block a[href*='myhr.php']:last"],
+        filters: [
+          (query: string | number) => {
+            const queryMatch = String(query || "").match(/\d+/);
+            return queryMatch && queryMatch.length >= 1 ? parseInt(queryMatch[0]) : 0;
+          },
+        ],
+      },
+      hnrUnsatisfied: {
+        text: 0,
+        selector: [".site-userbar__compact-metric--hr", "#info_block a[href*='myhr.php']:last"],
+        filters: [
+          (query: string | number) => {
+            const queryMatch = String(query || "").match(/\d+\s*\/\s*(\d+)/);
+            return queryMatch && queryMatch.length >= 2 ? parseInt(queryMatch[1]) : 0;
+          },
+        ],
+      },
+    },
+  },
+
+  levelRequirements: [
+    {
+      id: 0,
+      name: "User",
+      nameAka: ["小鬼当家"],
+      privilege: "新用户的默认级别；可以请求续种。",
+    },
+    {
+      id: 1,
+      name: "Power User",
+      nameAka: ["年轻气盛"],
+      interval: "P5W",
+      downloaded: "120GB",
+      ratio: 2.0,
+      seedingBonus: 100000,
+      privilege:
+        '可以查看NFO文档；可以查看用户列表； 可以查看其它用户的种子历史(如果用户隐私等级未设置为"强")； 可以删除自己上传的字幕；发布10种通过候选后可直接发布种子。',
+    },
+    {
+      id: 2,
+      name: "Elite User",
+      nameAka: ["江湖儿女"],
+      interval: "P15W",
+      downloaded: "240GB",
+      ratio: 2.5,
+      seedingBonus: 200000,
+      privilege: "同年轻气盛(Power User)",
+    },
+    {
+      id: 3,
+      name: "Crazy User",
+      nameAka: ["街头霸王"],
+      interval: "P24W",
+      downloaded: "400GB",
+      ratio: 3.0,
+      seedingBonus: 400000,
+      privilege: "可以查看排行榜。",
+    },
+    {
+      id: 4,
+      name: "Insane User",
+      nameAka: ["步履不停"],
+      interval: "P40W",
+      downloaded: "600GB",
+      ratio: 3.5,
+      seedingBonus: 640000,
+      privilege: "同街头霸王(Crazy User)",
+    },
+    {
+      id: 5,
+      name: "Veteran User",
+      nameAka: ["杰出公民"],
+      interval: "P60W",
+      downloaded: "1024GB",
+      ratio: 4.0,
+      seedingBonus: 880000,
+      privilege: "可以查看其它用户的评论、帖子历史。",
+    },
+    {
+      id: 6,
+      name: "Extreme User",
+      nameAka: ["头号玩家"],
+      interval: "P80W",
+      downloaded: "2048GB",
+      ratio: 4.5,
+      seedingBonus: 1200000,
+      isKept: true,
+      privilege: "可以更新过期的外部信息。头号玩家(Extreme User)及以上用户会永远保留账号。",
+    },
+    {
+      id: 7,
+      name: "Ultimate User",
+      nameAka: ["一代宗师"],
+      interval: "P100W",
+      downloaded: "4096GB",
+      ratio: 5.0,
+      seedingBonus: 1500000,
+      isKept: true,
+      privilege: "同头号玩家(Extreme User)",
+    },
+    {
+      id: 8,
+      name: "Nexus Master",
+      nameAka: ["教父"],
+      interval: "P112W",
+      downloaded: "8192GB",
+      ratio: 6.0,
+      seedingBonus: 1800000,
+      isKept: true,
+      privilege: "同一代宗师(Ultimate User)",
+    },
+    {
+      id: 9,
+      name: "Rainbow",
+      nameAka: ["彩虹照耀"],
+      interval: "P128W",
+      downloaded: "10240GB",
+      ratio: 8.0,
+      seedingBonus: 2400000,
+      isKept: true,
+      privilege:
+        "保持等级期间会显示彩虹ID，做种积分要求逐年增加（具体数值以通知为准），彩虹照耀(Rainbow)用户未到更新后的要求会被降级",
+    },
+  ],
+};
+
+export default class Audiences extends NexusPHP {
+  protected override async requestUserSeedingPage(userId: number, type: string = "seeding"): Promise<string | null> {
+    const { data } = await this.request<string>({
+      url: "/getusertorrentlistajax.php",
+      params: { userid: userId, type },
+      headers: {
+        Referer: rot13("uggcf://nhqvraprf.zr/hfreqrgnvyf.cuc"), // 不提供 Referer，无法获取到数据
+      },
+    });
+    return data || null;
+  }
+
+  // 获取做种信息
+  protected override async parseUserInfoForSeedingStatus(
+    flushUserInfo: Partial<IUserInfo>,
+  ): Promise<Partial<IUserInfo>> {
+    let seedStatus: Partial<IUserInfo> = {};
+
+    const userId = flushUserInfo.id as number;
+    if (!userId) {
+      return flushUserInfo;
+    }
+
+    const data = await this.requestUserSeedingPage(userId, "seeding");
+
+    if (data && data?.includes("<table")) {
+      const userSeedingPage = createDocument(data);
+      const trAnothers = Sizzle("table:first tr:contains('Total')", userSeedingPage as Document);
+      if (trAnothers.length > 0) {
+        const tds = trAnothers[0].getElementsByTagName("td");
+        seedStatus.seeding = tryToNumber(tds[1].innerText.trim());
+        seedStatus.seedingSize = parseSizeString(tds[2].innerText.trim());
+      }
+    }
+
+    flushUserInfo = mergeWith(flushUserInfo, seedStatus, (objValue, srcValue) => {
+      return typeof srcValue === "undefined" ? objValue : srcValue;
+    });
+
+    return flushUserInfo;
+  }
+}

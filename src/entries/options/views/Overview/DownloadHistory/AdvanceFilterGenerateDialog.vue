@@ -1,0 +1,188 @@
+<script setup lang="ts">
+import { useI18n } from "vue-i18n";
+import { addDays, startOfDay } from "date-fns";
+
+import { formatDate } from "@/options/utils.ts";
+import { tableCustomFilter } from "@/options/views/Overview/DownloadHistory/utils.ts";
+
+import SiteName from "@/options/components/SiteName.vue";
+import SiteFavicon from "@/options/components/SiteFavicon/Index.vue";
+import DownloaderLabel from "@/options/components/DownloaderLabel.vue";
+import { setDateRangeByDatePicker, getThisDateUnitRange } from "@/options/directives/useAdvanceFilter.ts";
+
+const showDialog = defineModel<boolean>();
+
+const { t } = useI18n();
+
+const {
+  advanceItemPropsRef,
+  advanceFilterDictRef,
+  reBuildFilterCountRef,
+  toggleKeywordStateFn,
+  reBuildAdvanceFilter,
+  updateTableFilterValueFn,
+} = tableCustomFilter;
+
+function updateTableFilter() {
+  updateTableFilterValueFn();
+  showDialog.value = false;
+}
+
+function enterDialog() {
+  reBuildAdvanceFilter();
+}
+</script>
+
+<template>
+  <v-dialog v-model="showDialog" width="800" @after-enter="enterDialog">
+    <v-card>
+      <v-card-title class="pa-0">
+        <v-toolbar color="blue-grey-darken-2">
+          <v-toolbar-title>{{ t("common.AdvanceFilterGenerateDialog.title") }}</v-toolbar-title>
+          <template #append>
+            <v-btn icon="mdi-close" :title="t('common.dialog.close')" @click="showDialog = false" />
+          </template>
+        </v-toolbar>
+      </v-card-title>
+      <v-divider />
+      <v-card-text class="overflow-y-auto">
+        <v-container>
+          <v-row><v-label>{{ t("common.AdvanceFilterGenerateDialog.keywords") }}</v-label> </v-row>
+          <v-row>
+            <v-col>
+              <v-combobox
+                v-model="advanceFilterDictRef.text.required"
+                chips
+                hide-details
+              :label="t('common.AdvanceFilterGenerateDialog.required')"
+                multiple
+              ></v-combobox>
+            </v-col>
+            <v-col>
+              <v-combobox
+                v-model="advanceFilterDictRef.text.exclude"
+                chips
+                hide-details
+              :label="t('common.AdvanceFilterGenerateDialog.exclude')"
+                multiple
+              ></v-combobox>
+            </v-col>
+          </v-row>
+          <v-row><v-label>{{ t("common.AdvanceFilterGenerateDialog.site") }}</v-label></v-row>
+          <v-row>
+            <v-col
+              v-for="site in advanceItemPropsRef.siteId"
+              :key="`${reBuildFilterCountRef}_${site}`"
+              class="pa-0"
+              sm="3"
+              :cols="6"
+            >
+              <v-checkbox
+                v-model="advanceFilterDictRef.siteId.required"
+                :label="site"
+                :value="site"
+                density="compact"
+                hide-details
+                indeterminate
+                @click.stop="() => toggleKeywordStateFn('siteId', site)"
+              >
+                <template #label>
+                  <SiteFavicon :site-id="site" :size="16" class="mr-2" />
+                  <SiteName :class="['text-decoration-none']" :site-id="site" tag="span" />
+                </template>
+              </v-checkbox>
+            </v-col>
+          </v-row>
+          <v-row><v-label>{{ t("DownloadHistory.AdvanceFilterGenerateDialog.downloader") }}</v-label></v-row>
+          <v-row>
+            <v-col
+              v-for="downloader in advanceItemPropsRef.downloaderId"
+              :key="`${reBuildFilterCountRef}_${downloader}`"
+              sm="6"
+              :cols="12"
+              class="pa-0"
+            >
+              <v-checkbox
+                v-model="advanceFilterDictRef.downloaderId.required"
+                :value="downloader"
+                density="compact"
+                hide-details
+                indeterminate
+                @click.stop="() => toggleKeywordStateFn('downloaderId', downloader)"
+              >
+                <template #label>
+                  <DownloaderLabel :downloader="downloader" />
+                </template>
+              </v-checkbox>
+            </v-col>
+          </v-row>
+          <!-- TODO 下载状态 -->
+          <v-row>
+            <v-col cols="12">
+              <v-row class="pr-4">
+                <v-label>{{ t("common.AdvanceFilterGenerateDialog.date") }}</v-label>
+                <v-spacer />
+                <v-chip
+                  v-for="dateUnit in ['day', 'week', 'month', 'quarter', 'year'] as const"
+                  :key="dateUnit"
+                  size="x-small"
+                  class="mr-1"
+                  @click="
+                    () =>
+                      (advanceFilterDictRef.downloadAt = getThisDateUnitRange(
+                        dateUnit,
+                        advanceItemPropsRef.downloadAt.range,
+                      ))
+                  "
+                >
+                  {{ t(`common.AdvanceFilterGenerateDialog.dateUnit.${dateUnit}`) }}
+                </v-chip>
+                <v-chip size="x-small">
+                  {{ t("common.AdvanceFilterGenerateDialog.dateUnit.custom") }}
+                  <v-menu activator="parent" location="top" :close-on-content-click="false">
+                    <v-date-picker
+                      :max="addDays(new Date(advanceItemPropsRef.downloadAt.range[1]), 1)"
+                      :min="startOfDay(new Date(advanceItemPropsRef.downloadAt.range[0]))"
+                      hide-header
+                      multiple="range"
+                      show-adjacent-months
+                      @update:model-value="(v) => (advanceFilterDictRef.downloadAt = setDateRangeByDatePicker(v))"
+                    ></v-date-picker>
+                  </v-menu>
+                </v-chip>
+              </v-row>
+              <v-row>
+                <v-range-slider
+                  v-model="advanceFilterDictRef.downloadAt"
+                  :max="advanceItemPropsRef.downloadAt.range[1]"
+                  :min="advanceItemPropsRef.downloadAt.range[0]"
+                  :step="60 * 1000"
+                  :thumb-label="true"
+                  :ticks="advanceItemPropsRef.downloadAt.ticks"
+                  class="px-6"
+                  hide-details
+                  show-ticks="always"
+                  tick-size="4"
+                >
+                  <template #tick-label></template>
+                  <template #thumb-label="{ modelValue }">
+                    <span class="text-no-wrap">{{ formatDate(modelValue ?? 0, "yyyy-MM-dd HH:mm") }}</span>
+                  </template>
+                </v-range-slider>
+              </v-row>
+            </v-col>
+          </v-row>
+        </v-container>
+      </v-card-text>
+      <v-divider />
+      <v-card-actions>
+        <v-btn variant="text" @click="() => reBuildAdvanceFilter(true)">{{ t("common.AdvanceFilterGenerateDialog.reset") }}</v-btn>
+        <v-spacer />
+        <v-btn color="error" variant="text" @click="showDialog = false">{{ t("common.dialog.cancel") }}</v-btn>
+        <v-btn color="primary" variant="text" @click="updateTableFilter">{{ t("common.AdvanceFilterGenerateDialog.generate") }}</v-btn>
+      </v-card-actions>
+    </v-card>
+  </v-dialog>
+</template>
+
+<style scoped lang="scss"></style>

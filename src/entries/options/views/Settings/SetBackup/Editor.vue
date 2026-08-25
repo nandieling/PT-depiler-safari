@@ -1,0 +1,144 @@
+<script setup lang="ts">
+import { ref } from "vue";
+import { useI18n } from "vue-i18n";
+import { computedAsync } from "@vueuse/core";
+import { getBackupServer, getBackupServerMetaData, IBackupMetadata } from "@ptd/backupServer";
+
+import { BackupFields, type IBackupServerMetadata } from "@/shared/types.ts";
+import { formValidateRules } from "@/options/utils.ts";
+
+import ConnectCheckButton from "@/options/components/ConnectCheckButton.vue";
+
+const { t } = useI18n();
+
+const clientConfig = defineModel<IBackupServerMetadata>();
+const emits = defineEmits<{
+  (e: "update:configValid", value: boolean): void;
+}>();
+
+const clientMeta = computedAsync<IBackupMetadata<any>>(
+  async () => {
+    const clientType = clientConfig.value?.type;
+    if (!clientType) {
+      return { requiredField: [] } as IBackupMetadata<any>;
+    }
+    return await getBackupServerMetaData(clientType);
+  },
+  { requiredField: [] } as IBackupMetadata<any>,
+);
+
+const formValid = ref<boolean>(false);
+
+async function checkConnect() {
+  const clientType = clientConfig.value?.type;
+  if (formValid.value && clientConfig.value && clientType) {
+    const client = await getBackupServer(clientConfig.value);
+    return await client.ping();
+  }
+  return false;
+}
+</script>
+
+<template>
+  <v-card class="mb-5">
+    <v-form v-if="clientConfig" v-model="formValid" fast-fail>
+      <v-container class="pa-0">
+        <v-label class="my-2">{{ t("common.basicInfo") }}</v-label>
+        <v-row>
+          <v-col cols="12" md="4">
+            <v-text-field v-model="clientConfig.type" :label="t('common.type')" disabled hide-details />
+          </v-col>
+          <v-col cols="12" md="4">
+            <v-text-field
+              v-model="clientConfig.name"
+              :label="t('SetDownloader.common.name')"
+              :placeholder="t('SetDownloader.common.name')"
+              :rules="[formValidateRules.require(t('SetDownloader.editor.nameTip'))]"
+              hide-details
+              required
+            />
+          </v-col>
+          <v-col cols="12" md="4">
+            <v-text-field
+              v-model="clientConfig.id"
+              :label="t('SetDownloader.common.uid') + t('SetDownloader.editor.uidPlaceholder')"
+              disabled
+              hide-details
+            />
+          </v-col>
+        </v-row>
+
+        <v-label class="my-2">{{ t("SetBackup.Editor.serverConfig") }}</v-label>
+
+        <v-row no-gutters>
+          <v-col v-for="metaField in clientMeta.requiredField" :key="metaField.key" class="my-1" cols="12">
+            <v-textarea
+              v-if="metaField.type === 'strings'"
+              v-model="clientConfig.config[metaField.key! as string]"
+              :hide-details="false"
+              :label="metaField.name"
+              :messages="metaField.description ?? undefined"
+            />
+            <v-text-field
+              v-else-if="metaField.type === 'string'"
+              v-model="clientConfig.config[metaField.key! as string]"
+              :hide-details="false"
+              :label="metaField.name"
+              :messages="metaField.description ?? undefined"
+            />
+            <v-switch
+              v-else-if="metaField.type === 'boolean'"
+              v-model="clientConfig.config[metaField.key! as string]"
+              :hide-details="false"
+              :label="metaField.name"
+              :messages="metaField.description ?? undefined"
+              color="success"
+            />
+          </v-col>
+        </v-row>
+
+        <v-divider class="my-2" />
+
+        <v-label class="my-2">{{ t("SetBackup.Editor.backupConfig") }}</v-label>
+
+        <v-row no-gutters>
+          <v-col cols="12">
+            <v-text-field
+              v-model.number="clientConfig.backupInterval"
+              :label="t('SetBackup.Editor.backupInterval')"
+              :messages="t('SetBackup.Editor.backupIntervalHint')"
+              :min="0"
+              :max="48"
+              clearable
+              hide-details="auto"
+              suffix="h"
+              type="number"
+            />
+          </v-col>
+        </v-row>
+
+        <v-row no-gutters>
+          <v-col v-for="backupField in BackupFields" :key="backupField" cols="12" md="4">
+            <v-switch
+              v-model="clientConfig.backupFields"
+              :label="t(`SetBackup.fields.${backupField}`)"
+              :value="backupField"
+              color="success"
+              hide-details
+            />
+          </v-col>
+        </v-row>
+
+        <ConnectCheckButton
+          :check-fn="checkConnect"
+          :reset-timeout="3e3"
+          @after:check-connect="
+            () => emits('update:configValid', formValid && true) // 不管是否测试成功，都允许用户进行下一步操作（保存下载服务器配置）
+          "
+        />
+      </v-container>
+    </v-form>
+  </v-card>
+</template>
+
+<style scoped lang="scss"></style>

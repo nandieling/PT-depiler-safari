@@ -1,0 +1,21 @@
+# macOS
+.DS_Store
+
+# Node.js and pnpm
+node_modules/
+.pnpm-store/
+
+# Extension build output
+dist-chrome/
+dist-firefox/
+dist-safari/
+
+# Generated Safari/Xcode project and build data
+safari-project/
+
+# Local environment and logs
+.env
+.env.*
+!.env.example
+*.log
+

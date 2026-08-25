@@ -1,0 +1,625 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		396B54423030766D00E492C1 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 396B54413030766D00E492C1 /* AppDelegate.swift */; };
+		396B54463030766D00E492C1 /* Main.html in Resources */ = {isa = PBXBuildFile; fileRef = 396B54443030766D00E492C1 /* Main.html */; };
+		396B54483030766D00E492C1 /* Icon.png in Resources */ = {isa = PBXBuildFile; fileRef = 396B54473030766D00E492C1 /* Icon.png */; };
+		396B544A3030766D00E492C1 /* Style.css in Resources */ = {isa = PBXBuildFile; fileRef = 396B54493030766D00E492C1 /* Style.css */; };
+		396B544C3030766D00E492C1 /* Script.js in Resources */ = {isa = PBXBuildFile; fileRef = 396B544B3030766D00E492C1 /* Script.js */; };
+		396B544E3030766D00E492C1 /* ViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 396B544D3030766D00E492C1 /* ViewController.swift */; };
+		396B54513030766D00E492C1 /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 396B544F3030766D00E492C1 /* Main.storyboard */; };
+		396B54533030766F00E492C1 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 396B54523030766F00E492C1 /* Assets.xcassets */; };
+		396B545A3030766F00E492C1 /* PT-Depiler Extension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 396B54593030766F00E492C1 /* PT-Depiler Extension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		396B545F3030766F00E492C1 /* SafariWebExtensionHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 396B545E3030766F00E492C1 /* SafariWebExtensionHandler.swift */; };
+		396B54733030767000E492C1 /* icons in Resources */ = {isa = PBXBuildFile; fileRef = 396B546B3030767000E492C1 /* icons */; };
+		396B54743030767000E492C1 /* manifest.json in Resources */ = {isa = PBXBuildFile; fileRef = 396B546C3030767000E492C1 /* manifest.json */; };
+		396B54753030767000E492C1 /* lib in Resources */ = {isa = PBXBuildFile; fileRef = 396B546D3030767000E492C1 /* lib */; };
+		396B54763030767000E492C1 /* pt-depiler.css in Resources */ = {isa = PBXBuildFile; fileRef = 396B546E3030767000E492C1 /* pt-depiler.css */; };
+		396B54773030767000E492C1 /* _locales in Resources */ = {isa = PBXBuildFile; fileRef = 396B546F3030767000E492C1 /* _locales */; };
+		396B54783030767000E492C1 /* assets in Resources */ = {isa = PBXBuildFile; fileRef = 396B54703030767000E492C1 /* assets */; };
+		396B54793030767000E492C1 /* vendor in Resources */ = {isa = PBXBuildFile; fileRef = 396B54713030767000E492C1 /* vendor */; };
+		396B547A3030767000E492C1 /* src in Resources */ = {isa = PBXBuildFile; fileRef = 396B54723030767000E492C1 /* src */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		396B545B3030766F00E492C1 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 396B54363030766D00E492C1 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 396B54583030766F00E492C1;
+			remoteInfo = "PT-Depiler Extension";
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		396B54663030766F00E492C1 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				396B545A3030766F00E492C1 /* PT-Depiler Extension.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFileReference section */
+		396B543E3030766D00E492C1 /* PT-Depiler.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "PT-Depiler.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		396B54413030766D00E492C1 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
+		396B54453030766D00E492C1 /* Base */ = {isa = PBXFileReference; lastKnownFileType = text.html; name = Base; path = Base.lproj/Main.html; sourceTree = "<group>"; };
+		396B54473030766D00E492C1 /* Icon.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = Icon.png; sourceTree = "<group>"; };
+		396B54493030766D00E492C1 /* Style.css */ = {isa = PBXFileReference; lastKnownFileType = text.css; path = Style.css; sourceTree = "<group>"; };
+		396B544B3030766D00E492C1 /* Script.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = Script.js; sourceTree = "<group>"; };
+		396B544D3030766D00E492C1 /* ViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewController.swift; sourceTree = "<group>"; };
+		396B54503030766D00E492C1 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/Main.storyboard; sourceTree = "<group>"; };
+		396B54523030766F00E492C1 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		396B54543030766F00E492C1 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		396B54593030766F00E492C1 /* PT-Depiler Extension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = "PT-Depiler Extension.appex"; sourceTree = BUILT_PRODUCTS_DIR; };
+		396B545E3030766F00E492C1 /* SafariWebExtensionHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SafariWebExtensionHandler.swift; sourceTree = "<group>"; };
+		396B54603030766F00E492C1 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		396B546B3030767000E492C1 /* icons */ = {isa = PBXFileReference; lastKnownFileType = folder; name = icons; path = Resources/icons; sourceTree = "<group>"; };
+		396B546C3030767000E492C1 /* manifest.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = manifest.json; path = Resources/manifest.json; sourceTree = "<group>"; };
+		396B546D3030767000E492C1 /* lib */ = {isa = PBXFileReference; lastKnownFileType = folder; name = lib; path = Resources/lib; sourceTree = "<group>"; };
+		396B546E3030767000E492C1 /* pt-depiler.css */ = {isa = PBXFileReference; lastKnownFileType = text.css; name = "pt-depiler.css"; path = "Resources/pt-depiler.css"; sourceTree = "<group>"; };
+		396B546F3030767000E492C1 /* _locales */ = {isa = PBXFileReference; lastKnownFileType = folder; name = _locales; path = Resources/_locales; sourceTree = "<group>"; };
+		396B54703030767000E492C1 /* assets */ = {isa = PBXFileReference; lastKnownFileType = folder; name = assets; path = Resources/assets; sourceTree = "<group>"; };
+		396B54713030767000E492C1 /* vendor */ = {isa = PBXFileReference; lastKnownFileType = folder; name = vendor; path = Resources/vendor; sourceTree = "<group>"; };
+		396B54723030767000E492C1 /* src */ = {isa = PBXFileReference; lastKnownFileType = folder; name = src; path = Resources/src; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		396B543B3030766D00E492C1 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		396B54563030766F00E492C1 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		396B54353030766C00E492C1 = {
+			isa = PBXGroup;
+			children = (
+				396B54403030766D00E492C1 /* PT-Depiler */,
+				396B545D3030766F00E492C1 /* PT-Depiler Extension */,
+				396B543F3030766D00E492C1 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		396B543F3030766D00E492C1 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				396B543E3030766D00E492C1 /* PT-Depiler.app */,
+				396B54593030766F00E492C1 /* PT-Depiler Extension.appex */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		396B54403030766D00E492C1 /* PT-Depiler */ = {
+			isa = PBXGroup;
+			children = (
+				396B54413030766D00E492C1 /* AppDelegate.swift */,
+				396B544D3030766D00E492C1 /* ViewController.swift */,
+				396B544F3030766D00E492C1 /* Main.storyboard */,
+				396B54523030766F00E492C1 /* Assets.xcassets */,
+				396B54543030766F00E492C1 /* Info.plist */,
+				396B54433030766D00E492C1 /* Resources */,
+			);
+			path = "PT-Depiler";
+			sourceTree = "<group>";
+		};
+		396B54433030766D00E492C1 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				396B54443030766D00E492C1 /* Main.html */,
+				396B54473030766D00E492C1 /* Icon.png */,
+				396B54493030766D00E492C1 /* Style.css */,
+				396B544B3030766D00E492C1 /* Script.js */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+		396B545D3030766F00E492C1 /* PT-Depiler Extension */ = {
+			isa = PBXGroup;
+			children = (
+				396B546A3030767000E492C1 /* Resources */,
+				396B545E3030766F00E492C1 /* SafariWebExtensionHandler.swift */,
+				396B54603030766F00E492C1 /* Info.plist */,
+			);
+			path = "PT-Depiler Extension";
+			sourceTree = "<group>";
+		};
+		396B546A3030767000E492C1 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				396B546B3030767000E492C1 /* icons */,
+				396B546C3030767000E492C1 /* manifest.json */,
+				396B546D3030767000E492C1 /* lib */,
+				396B546E3030767000E492C1 /* pt-depiler.css */,
+				396B546F3030767000E492C1 /* _locales */,
+				396B54703030767000E492C1 /* assets */,
+				396B54713030767000E492C1 /* vendor */,
+				396B54723030767000E492C1 /* src */,
+			);
+			name = Resources;
+			path = "PT-Depiler Extension";
+			sourceTree = SOURCE_ROOT;
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		396B543D3030766D00E492C1 /* PT-Depiler */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 396B54673030766F00E492C1 /* Build configuration list for PBXNativeTarget "PT-Depiler" */;
+			buildPhases = (
+				396B543A3030766D00E492C1 /* Sources */,
+				396B543B3030766D00E492C1 /* Frameworks */,
+				396B543C3030766D00E492C1 /* Resources */,
+				396B54663030766F00E492C1 /* Embed Foundation Extensions */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				396B545C3030766F00E492C1 /* PBXTargetDependency */,
+			);
+			name = "PT-Depiler";
+			packageProductDependencies = (
+			);
+			productName = "PT-Depiler";
+			productReference = 396B543E3030766D00E492C1 /* PT-Depiler.app */;
+			productType = "com.apple.product-type.application";
+		};
+		396B54583030766F00E492C1 /* PT-Depiler Extension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 396B54633030766F00E492C1 /* Build configuration list for PBXNativeTarget "PT-Depiler Extension" */;
+			buildPhases = (
+				396B54553030766F00E492C1 /* Sources */,
+				396B54563030766F00E492C1 /* Frameworks */,
+				396B54573030766F00E492C1 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = "PT-Depiler Extension";
+			packageProductDependencies = (
+			);
+			productName = "PT-Depiler Extension";
+			productReference = 396B54593030766F00E492C1 /* PT-Depiler Extension.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		396B54363030766D00E492C1 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 2660;
+				LastUpgradeCheck = 2660;
+				TargetAttributes = {
+					396B543D3030766D00E492C1 = {
+						CreatedOnToolsVersion = 26.6;
+					};
+					396B54583030766F00E492C1 = {
+						CreatedOnToolsVersion = 26.6;
+					};
+				};
+			};
+			buildConfigurationList = 396B54393030766D00E492C1 /* Build configuration list for PBXProject "PT-Depiler" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = 396B54353030766C00E492C1;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 396B543F3030766D00E492C1 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				396B543D3030766D00E492C1 /* PT-Depiler */,
+				396B54583030766F00E492C1 /* PT-Depiler Extension */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		396B543C3030766D00E492C1 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				396B54483030766D00E492C1 /* Icon.png in Resources */,
+				396B54513030766D00E492C1 /* Main.storyboard in Resources */,
+				396B544C3030766D00E492C1 /* Script.js in Resources */,
+				396B54463030766D00E492C1 /* Main.html in Resources */,
+				396B54533030766F00E492C1 /* Assets.xcassets in Resources */,
+				396B544A3030766D00E492C1 /* Style.css in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		396B54573030766F00E492C1 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				396B54753030767000E492C1 /* lib in Resources */,
+				396B54793030767000E492C1 /* vendor in Resources */,
+				396B54743030767000E492C1 /* manifest.json in Resources */,
+				396B547A3030767000E492C1 /* src in Resources */,
+				396B54733030767000E492C1 /* icons in Resources */,
+				396B54783030767000E492C1 /* assets in Resources */,
+				396B54773030767000E492C1 /* _locales in Resources */,
+				396B54763030767000E492C1 /* pt-depiler.css in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		396B543A3030766D00E492C1 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				396B544E3030766D00E492C1 /* ViewController.swift in Sources */,
+				396B54423030766D00E492C1 /* AppDelegate.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		396B54553030766F00E492C1 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				396B545F3030766F00E492C1 /* SafariWebExtensionHandler.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		396B545C3030766F00E492C1 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 396B54583030766F00E492C1 /* PT-Depiler Extension */;
+			targetProxy = 396B545B3030766F00E492C1 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin PBXVariantGroup section */
+		396B54443030766D00E492C1 /* Main.html */ = {
+			isa = PBXVariantGroup;
+			children = (
+				396B54453030766D00E492C1 /* Base */,
+			);
+			name = Main.html;
+			sourceTree = "<group>";
+		};
+		396B544F3030766D00E492C1 /* Main.storyboard */ = {
+			isa = PBXVariantGroup;
+			children = (
+				396B54503030766D00E492C1 /* Base */,
+			);
+			name = Main.storyboard;
+			sourceTree = "<group>";
+		};
+/* End PBXVariantGroup section */
+
+/* Begin XCBuildConfiguration section */
+		396B54613030766F00E492C1 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		396B54623030766F00E492C1 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SDKROOT = macosx;
+				SWIFT_COMPILATION_MODE = wholemodule;
+			};
+			name = Release;
+		};
+		396B54643030766F00E492C1 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_USER_SELECTED_FILES = readonly;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "PT-Depiler Extension/Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "PT-Depiler Extension";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@executable_path/../../../../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				MARKETING_VERSION = 1.0;
+				OTHER_LDFLAGS = (
+					"-framework",
+					SafariServices,
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.ptplugins.ptdepiler.Extension;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		396B54653030766F00E492C1 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_USER_SELECTED_FILES = readonly;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "PT-Depiler Extension/Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "PT-Depiler Extension";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@executable_path/../../../../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				MARKETING_VERSION = 1.0;
+				OTHER_LDFLAGS = (
+					"-framework",
+					SafariServices,
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.ptplugins.ptdepiler.Extension;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		396B54683030766F00E492C1 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_OUTGOING_NETWORK_CONNECTIONS = YES;
+				ENABLE_USER_SELECTED_FILES = readonly;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "PT-Depiler/Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "PT-Depiler";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				INFOPLIST_KEY_NSMainStoryboardFile = Main;
+				INFOPLIST_KEY_NSPrincipalClass = NSApplication;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				OTHER_LDFLAGS = (
+					"-framework",
+					SafariServices,
+					"-framework",
+					WebKit,
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.ptplugins.ptdepiler;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				REGISTER_APP_GROUPS = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		396B54693030766F00E492C1 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_OUTGOING_NETWORK_CONNECTIONS = YES;
+				ENABLE_USER_SELECTED_FILES = readonly;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "PT-Depiler/Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "PT-Depiler";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				INFOPLIST_KEY_NSMainStoryboardFile = Main;
+				INFOPLIST_KEY_NSPrincipalClass = NSApplication;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				OTHER_LDFLAGS = (
+					"-framework",
+					SafariServices,
+					"-framework",
+					WebKit,
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.ptplugins.ptdepiler;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				REGISTER_APP_GROUPS = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		396B54393030766D00E492C1 /* Build configuration list for PBXProject "PT-Depiler" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				396B54613030766F00E492C1 /* Debug */,
+				396B54623030766F00E492C1 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		396B54633030766F00E492C1 /* Build configuration list for PBXNativeTarget "PT-Depiler Extension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				396B54643030766F00E492C1 /* Debug */,
+				396B54653030766F00E492C1 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		396B54673030766F00E492C1 /* Build configuration list for PBXNativeTarget "PT-Depiler" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				396B54683030766F00E492C1 /* Debug */,
+				396B54693030766F00E492C1 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 396B54363030766D00E492C1 /* Project object */;
+}
