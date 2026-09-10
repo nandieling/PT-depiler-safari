@@ -42,6 +42,26 @@ if [[ ! -f "${repo_dir}/dist-safari/manifest.json" ]]; then
   exit 1
 fi
 
+# The checked-in Xcode project is only a template.  Its extension resource
+# references are populated below from the freshly built WebExtension.
+required_resources=(
+  "manifest.json"
+  "_locales"
+  "assets"
+  "icons"
+  "lib"
+  "pt-depiler.css"
+  "src"
+  "vendor"
+)
+for resource in "${required_resources[@]}"; do
+  if [[ ! -e "${repo_dir}/dist-safari/${resource}" ]]; then
+    echo "error: Safari build output is missing '${resource}'." >&2
+    echo "Run 'pnpm build:dist-safari' and inspect the Vite build before opening Xcode." >&2
+    exit 1
+  fi
+done
+
 echo "Preparing the Safari Xcode project..."
 if [[ "${project_dir}" = /* ]]; then
   project_output_dir="${project_dir}"
@@ -59,6 +79,13 @@ rm -rf "${extension_resources_dir}"
 mkdir -p "${extension_resources_dir}"
 ditto "${repo_dir}/dist-safari/." "${extension_resources_dir}"
 
+for resource in "${required_resources[@]}"; do
+  if [[ ! -e "${extension_resources_dir}/${resource}" ]]; then
+    echo "error: failed to copy '${resource}' into the generated Safari project." >&2
+    exit 1
+  fi
+done
+
 BUNDLE_ID="${bundle_id}" DEPLOYMENT_TARGET="${deployment_target}" perl -0pi -e '
   s/PRODUCT_BUNDLE_IDENTIFIER = [^;]*Extension;/PRODUCT_BUNDLE_IDENTIFIER = $ENV{BUNDLE_ID}.Extension;/g;
   s/PRODUCT_BUNDLE_IDENTIFIER = (?![^;]*Extension)[^;]+;/PRODUCT_BUNDLE_IDENTIFIER = $ENV{BUNDLE_ID};/g;
@@ -66,3 +93,4 @@ BUNDLE_ID="${bundle_id}" DEPLOYMENT_TARGET="${deployment_target}" perl -0pi -e '
 ' "${project_file}"
 
 echo "Safari project: ${project_file%/project.pbxproj}"
+echo "Open the generated project above; do not open safari/PT-Depiler directly."

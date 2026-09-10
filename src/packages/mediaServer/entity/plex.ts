@@ -143,7 +143,7 @@ export default class Plex extends AbstractMediaServer<IPlexConfig> {
     config.params["X-Plex-Token"] = this.config.auth.apikey;
 
     config.responseType = "json";
-    return axios.request(config);
+    return (await axios.request(config)) as R;
   }
 
   private async getServerIdentity(): Promise<string | undefined> {

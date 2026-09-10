@@ -262,7 +262,7 @@ export default class FnOS extends AbstractMediaServer<IFnOSConfig> {
     };
 
     try {
-      return await axios.request(config);
+      return (await axios.request(config)) as R;
     } catch (e) {
       if (!retried && e instanceof AxiosError && e.response?.status === 401) {
         await this.login(true);

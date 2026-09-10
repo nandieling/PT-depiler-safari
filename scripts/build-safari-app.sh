@@ -15,6 +15,12 @@ project_path="${project_dir}/${app_name}/${app_name}.xcodeproj"
 
 "${script_dir}/create-safari-project.sh"
 
+resources_dir="${project_dir}/${app_name}/${app_name} Extension/Resources"
+if [[ ! -f "${resources_dir}/manifest.json" ]]; then
+  echo "error: generated Safari project has no WebExtension resources: ${resources_dir}" >&2
+  exit 1
+fi
+
 xcodebuild \
   -project "${project_path}" \
   -scheme "${app_name}" \

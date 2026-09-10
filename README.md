@@ -108,6 +108,8 @@ open safari-project/PT-Depiler/PT-Depiler.xcodeproj
 3. 打开 Safari 的“设置 > 扩展”，启用 PT-Depiler
 4. 按需允许扩展访问 PT 站点
 
+不要直接打开 `safari/PT-Depiler/PT-Depiler.xcodeproj`。该目录是没有 WebExtension 构建资源的模板，直接编译会出现 `_locales`、`assets`、`manifest.json` 等文件不存在的错误。必须先运行 `pnpm build:safari-project` 或 `pnpm build:safari-app`，然后打开生成的 `safari-project/PT-Depiler/PT-Depiler.xcodeproj`。
+
 个人免费 Apple ID 可用于本机调试，但签名可能定期过期。发布到 Mac App Store 或分发给其他用户需要有效的 Apple Developer 证书、唯一 Bundle ID，并按 Apple 的要求完成归档、公证或商店提交。
 
 ## 常用构建命令

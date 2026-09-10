@@ -129,7 +129,7 @@ export default class Emby extends AbstractMediaServer<IEmbyConfig> {
     // 处理请求url
     config.url = url;
 
-    return axios.request(config);
+    return (await axios.request(config)) as R;
   }
 
   public override async ping(): Promise<boolean> {

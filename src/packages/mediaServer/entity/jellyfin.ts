@@ -80,7 +80,7 @@ export default class Jellyfin extends AbstractMediaServer<IJellyfinConfig> {
     // 处理请求url
     config.url = url;
 
-    return axios.request(config);
+    return (await axios.request(config)) as R;
   }
 
   public async ping(): Promise<boolean> {
