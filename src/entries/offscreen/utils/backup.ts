@@ -27,16 +27,35 @@ export const storageKey = [
   "keepUploadTask",
 ] as TExtensionStorageKey[];
 
+/**
+ * 判断 cookie 的 domain 是否属于指定站点主机（与 Chrome 的 cookies.getAll({ domain }) 匹配语义保持一致）：
+ * - cookie 设置在站点主机或其父级域名上（即该 cookie 会被发送到该站点）
+ * - cookie 设置在站点主机的子域名上（属于该站点的子域）
+ */
+function isCookieDomainMatchSiteHost(cookieDomain: string | undefined, siteHost: string): boolean {
+  const cookieHost = (cookieDomain ?? "").replace(/^\./, "").toLowerCase();
+  const host = siteHost.toLowerCase();
+  if (!cookieHost || !host) {
+    return false;
+  }
+  return host === cookieHost || host.endsWith(`.${cookieHost}`) || cookieHost.endsWith(`.${host}`);
+}
+
 export async function createBackupData(backupFields: TBackupFields[] = []): Promise<IBackupData> {
   const metadataStore = (await sendMessage("getExtStorage", "metadata")) as IMetadataPiniaStorageSchema;
 
   const backupData: IBackupData = {};
 
   // 备份已添加站点的Cookie
+  // 注意：Safari (WebKit) 的 browser.cookies.getAll({ domain }) 只会返回域名等于该 domain
+  // 或其子域名的 cookie，无法匹配设置在父级域名上的 cookie（例如站点主机为 www.example.com
+  // 而登录 cookie 设置在 example.com 上），导致备份出的 cookies.json 为空。
+  // 因此这里一次性获取全部 cookie，再在本地按 Chrome 的 domain 匹配语义进行过滤。
   if (backupFields.includes("cookies")) {
+    const allCookies = await sendMessage("getAllCookies", {});
     const cookies = {} as Required<IBackupData>["cookies"];
     for (const siteHost in metadataStore.siteHostMap) {
-      const siteHostCookies = await sendMessage("getAllCookies", { domain: siteHost });
+      const siteHostCookies = allCookies.filter((cookie) => isCookieDomainMatchSiteHost(cookie.domain, siteHost));
       if (siteHostCookies.length > 0) {
         cookies[siteHost] = siteHostCookies;
       }
@@ -63,7 +82,13 @@ export async function createBackupData(backupFields: TBackupFields[] = []): Prom
 
   logger({
     msg: `A Backup data created at ${formatDate(backupData.manifest.time!, "yyyy-MM-dd HH:mm:ss")}`,
-    data: Object.keys(backupData),
+    data: {
+      fields: Object.keys(backupData),
+      // 用于排查 cookies.json 为空的问题：区分浏览器返回 0 条 cookie 与本地过滤后为 0 条
+      cookieCount: backupData.cookies
+        ? Object.values(backupData.cookies).reduce((sum, siteCookies) => sum + siteCookies.length, 0)
+        : undefined,
+    },
   });
   return backupData;
 }
