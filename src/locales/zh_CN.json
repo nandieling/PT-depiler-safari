@@ -513,6 +513,10 @@
     "title": "为 {0} 个种子选择下载器"
   },
   "SetBackup": {
+    "autoBackupTask": {
+      "scheduled": "自动备份任务已注册，下次检查：{time}",
+      "unscheduled": "自动备份任务尚未注册，本页面打开期间每 5 分钟检查一次"
+    },
     "AddDialog": {
       "title": "添加备份服务器"
     },

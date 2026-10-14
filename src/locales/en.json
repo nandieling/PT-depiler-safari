@@ -513,6 +513,10 @@
     "title": "Select downloader for {0} torrents"
   },
   "SetBackup": {
+    "autoBackupTask": {
+      "scheduled": "Auto-backup task registered, next check: {time}",
+      "unscheduled": "Auto-backup task is not registered yet; this page re-checks every 5 minutes while it stays open"
+    },
     "AddDialog": {
       "title": "Add Backup Server"
     },

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { computed, onMounted, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { getBackupServerIcon } from "@ptd/backupServer";
 import { hasBackupRetentionToApply } from "@ptd/backupServer/utils.ts";
@@ -10,6 +10,7 @@ import { useRuntimeStore } from "@/options/stores/runtime.ts";
 import { useTableActionColumn } from "@/options/directives/useTableActionColumn.ts";
 import { formatDate } from "@/options/utils.ts";
 import { BackupFields, type IBackupServerMetadata, type TBackupServerKey } from "@/shared/types.ts";
+import { AUTO_BACKUP_JOB_ID } from "@/background/utils/autoBackup.ts";
 import { sendMessage } from "@/messages.ts";
 
 import NavButton from "@/options/components/NavButton.vue";
@@ -50,6 +51,20 @@ const fullTableHeader = computed(() =>
   ] as DataTableHeader[]),
 );
 const tableSelected = ref<TBackupServerKey[]>([]);
+
+// 自动备份任务状态：任务注册在 alarms 里，由后台页驱动；Safari 的后台页不一定活着，
+// 所以选项页打开期间也会驱动同一份检查逻辑（见 options/safariRuntime.ts）。
+const autoBackupNextCheckAt = ref<number | null>(null);
+const hasAutoBackupServer = computed(() =>
+  metadataStore.getBackupServers.some((server) => server.enabled && (server.backupInterval ?? 0) > 0),
+);
+
+async function refreshAutoBackupTask() {
+  const alarm = await chrome.alarms.get(AUTO_BACKUP_JOB_ID);
+  autoBackupNextCheckAt.value = alarm?.scheduledTime ?? null;
+}
+
+onMounted(() => refreshAutoBackupTask());
 
 /** 自动备份间隔（小时），支持小数以表达不足 1 小时的间隔 */
 function formatBackupInterval(serverConfig: IBackupServerMetadata): string {
@@ -148,6 +163,19 @@ async function confirmDeleteBackupServer(id: TBackupServerKey) {
         <v-text-field clearable density="compact" hide-details label="Search" max-width="500" single-line />
       </v-row>
     </v-card-title>
+
+    <v-alert
+      v-if="hasAutoBackupServer"
+      class="mb-1"
+      density="compact"
+      variant="tonal"
+      :type="autoBackupNextCheckAt ? 'info' : 'warning'"
+      :text="
+        autoBackupNextCheckAt
+          ? t('SetBackup.autoBackupTask.scheduled', { time: formatDate(autoBackupNextCheckAt) })
+          : t('SetBackup.autoBackupTask.unscheduled')
+      "
+    />
 
     <v-data-table
       v-model="tableSelected"

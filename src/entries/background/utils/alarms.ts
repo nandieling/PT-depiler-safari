@@ -4,7 +4,8 @@ import { EResultParseStatus, type TSiteID } from "@ptd/site/types/base.ts";
 
 import { extStorage } from "@/storage.ts";
 import { onMessage, sendMessage } from "@/messages.ts";
-import { IDownloadTorrentOption, IMetadataPiniaStorageSchema } from "@/shared/types.ts";
+import { IDownloadTorrentOption } from "@/shared/types.ts";
+import { scheduleAutoBackup } from "./autoBackup.ts";
 
 import { setupOffscreenDocument } from "./offscreen.ts";
 import { sleep } from "~/helper.ts";
@@ -12,7 +13,6 @@ import { sleep } from "~/helper.ts";
 export enum EJobType {
   FlushUserInfo = "flushUserInfo",
   ReDownloadTorrent = "reDownloadTorrent",
-  AutoBackup = "autoBackup",
 }
 
 const jobs = defineJobScheduler();
@@ -131,65 +131,10 @@ jobs.scheduleJob({
   execute: autoFlushUserInfo(),
 });
 
-/**
- * 自动备份：检查所有已启用且设置了备份间隔的备份服务器，在满足条件时触发备份
- */
-function autoBackup() {
-  return async () => {
-    await setupOffscreenDocument();
-
-    const metadataStore = (await extStorage.getItem("metadata")) as IMetadataPiniaStorageSchema | undefined;
-    if (!metadataStore?.backupServers) {
-      return;
-    }
-
-    const now = Date.now();
-
-    for (const [serverId, serverConfig] of Object.entries(metadataStore.backupServers)) {
-      // 仅处理已启用且有备份间隔的服务器
-      if (!serverConfig.enabled || !serverConfig.backupInterval || serverConfig.backupInterval <= 0) {
-        continue;
-      }
-
-      const intervalMs = serverConfig.backupInterval * 60 * 60 * 1000;
-      const lastBackup = serverConfig.lastBackupAt ?? 0;
-
-      if (now - lastBackup >= intervalMs) {
-        sendMessage("logger", {
-          msg: `Auto-backup triggered for [${serverConfig.name}] (interval: ${serverConfig.backupInterval}h)`,
-        }).catch();
-
-        try {
-          const backupFields = serverConfig.backupFields ?? [];
-          const ok = await sendMessage("exportBackupData", {
-            backupServerId: serverId,
-            backupFields,
-          });
-
-          if (!ok) {
-            sendMessage("logger", {
-              msg: `Auto-backup failed for [${serverConfig.name}] (returned false)`,
-            }).catch();
-          }
-        } catch (e) {
-          const errMsg = e instanceof Error ? e.message : String(e);
-          sendMessage("logger", {
-            msg: `Auto-backup failed for [${serverConfig.name}]: ${errMsg}`,
-          }).catch();
-        }
-      }
-    }
-  };
-}
-
+// 自动备份：检查与执行逻辑见 ./autoBackup.ts，
+// Safari 移植版还会在选项页运行时里驱动同一份逻辑（见 options/safariRuntime.ts）
 // noinspection JSIgnoredPromiseFromCall
-jobs.scheduleJob({
-  id: EJobType.AutoBackup,
-  type: "interval",
-  duration: 1000 * 60 * 10, // check every 10 minutes
-  immediate: true,
-  execute: autoBackup(),
-});
+scheduleAutoBackup();
 
 function doReDownloadTorrent(downloadOption: IDownloadTorrentOption) {
   return async () => {
