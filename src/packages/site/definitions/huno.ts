@@ -1,5 +1,6 @@
 import {
   ETorrentStatus,
+  NoUserInputError,
   type IAdvancedSearchRequestConfig,
   type ISearchInput,
   type ISiteMetadata,
@@ -56,10 +57,7 @@ function getHunoApiSubTitle(row: object): string {
     getHunoApiValue(row, ["source_type.name", "source_type", "attributes.source_type.name", "attributes.source_type"]),
   ];
 
-  return values
-    .filter(Boolean)
-    .map(String)
-    .join(" / ");
+  return values.filter(Boolean).map(String).join(" / ");
 }
 
 function getHunoApiTagText(row: object, paths: string[]): string {
@@ -100,7 +98,10 @@ function isHunoTruthyFreeValue(value: string): boolean {
     return false;
   }
 
-  return /^(true|1|yes|free|freeleech|100|100\.0|100%)$/.test(normalizedValue) || /100%\s*free|freeleech/.test(normalizedValue);
+  return (
+    /^(true|1|yes|free|freeleech|100|100\.0|100%)$/.test(normalizedValue) ||
+    /100%\s*free|freeleech/.test(normalizedValue)
+  );
 }
 
 export const siteMetadata: ISiteMetadata = {
@@ -117,7 +118,6 @@ export const siteMetadata: ISiteMetadata = {
   schema: "Unit3D",
 
   urls: ["uggcf://unjxr.hab/"],
-  legacyUrls: ["uggcf://unjxr.habm/"],
 
   collaborator: ["fzlins", "hui-shao"],
 
@@ -215,10 +215,7 @@ export const siteMetadata: ISiteMetadata = {
       },
       category: {
         selector: ":self",
-        filters: [
-          (row: object) =>
-            getHunoApiValue(row, ["category.name", "attributes.category.name"], "All"),
-        ],
+        filters: [(row: object) => getHunoApiValue(row, ["category.name", "attributes.category.name"], "All")],
       },
       size: { selector: ["size", "attributes.size"] },
       time: { selector: ["created_at", "attributes.created_at", "bumped_at", "attributes.bumped_at"] },
@@ -526,10 +523,15 @@ export default class Huno extends Unit3D {
     axiosConfig: AxiosRequestConfig,
     checkLogin: boolean = true,
   ): Promise<AxiosResponse<T>> {
+    const token = this.userConfig.inputSetting?.token;
+    if (!token) {
+      throw new NoUserInputError("Token"); // 未填写 Token 时直接拦截，避免请求被误判为需要登录
+    }
+
     // add token to headers
     axiosConfig.headers = {
       ...(axiosConfig.headers ?? {}),
-      "X-Api-Token": this.userConfig.inputSetting!.token ?? "",
+      "X-Api-Token": token,
       origin: this.url,
     };
 

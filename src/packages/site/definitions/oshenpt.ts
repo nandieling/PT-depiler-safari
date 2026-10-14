@@ -1,5 +1,7 @@
 /**
  * FIXME 由 resource/sites/www.oshen.win/config.json 自动转换而来
+ * @JackettDefinitions https://github.com/Jackett/Jackett/blob/master/src/Jackett.Common/Definitions/oshenpt.yml
+ * @PDSDefinitions https://github.com/mantou568/pre-dessert-sites/blob/main/site_config/sites/oshenpt.json
  */
 import { type ISiteMetadata } from "../types";
 import { CategoryInclbookmarked, CategoryIncldead, CategorySpstate, SchemaMetadata } from "../schemas/NexusPHP";
@@ -21,6 +23,7 @@ export const siteMetadata: ISiteMetadata = {
   collaborator: ["AllenPu"],
 
   urls: ["https://www.oshen.win/"],
+  favicon: "./_default_nexusphp.png",
 
   category: [
     {

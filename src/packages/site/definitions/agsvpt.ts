@@ -1,9 +1,11 @@
 /**
  * @JackettDefinitions https://github.com/Jackett/Jackett/blob/master/src/Jackett.Common/Definitions/agsvpt.yml
  * @JackettIssue https://github.com/Jackett/Jackett/issues/14946
+ * @PDSDefinitions https://github.com/mantou568/pre-dessert-sites/blob/main/site_config/sites/agsvpt.json
+ * @PTMDefinitions https://github.com/JustLookAtNow/pt_mate/blob/master/assets/sites/agsvpt.json
  */
 import { type ISiteMetadata } from "../types";
-import { SchemaMetadata } from "../schemas/NexusPHP";
+import { CategoryInclbookmarked, CategoryIncldead, CategorySpstate, SchemaMetadata } from "../schemas/NexusPHP";
 import { extractContent } from "../utils";
 
 export const siteMetadata: ISiteMetadata = {
@@ -44,6 +46,9 @@ export const siteMetadata: ISiteMetadata = {
       ],
       cross: { mode: "append" },
     },
+    CategoryIncldead,
+    CategorySpstate,
+    CategoryInclbookmarked,
   ],
 
   search: {

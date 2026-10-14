@@ -1,3 +1,8 @@
+/**
+ * @JackettDefinitions https://github.com/Jackett/Jackett/blob/master/src/Jackett.Common/Definitions/ptskit.yml
+ * @PDSDefinitions https://github.com/mantou568/pre-dessert-sites/blob/main/site_config/sites/ptskit.json
+ * @PTMDefinitions https://github.com/JustLookAtNow/pt_mate/blob/master/assets/sites/ptskit.json
+ */
 import { type ISiteMetadata } from "../types";
 import { CategoryInclbookmarked, CategoryIncldead, CategorySpstate, SchemaMetadata } from "../schemas/NexusPHP.ts";
 
@@ -41,13 +46,13 @@ export const siteMetadata: ISiteMetadata = {
     },
     {
       name: "分类（十八禁）",
-      key: "cat",
+      key: "cat_special",
       options: [
         { name: "欧美", value: 412 },
         { name: "日本", value: 411 },
         { name: "国产", value: 410 },
       ],
-      cross: { mode: "append" },
+      cross: { mode: "append", key: "cat" },
     },
     {
       name: "媒介",

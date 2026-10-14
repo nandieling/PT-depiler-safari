@@ -14,10 +14,18 @@ import {
   CTorrentState,
   TorrentClientStatus,
   CAddTorrentResult,
+  TorrentQueueDirection,
+  TorrentSpeedLimit,
+  CTorrentFile,
+  CTorrentFileSelection,
+  CTorrentPeer,
+  CTorrentTracker,
+  CTrackerState,
+  TorrentFilePriority,
 } from "../types";
-import axios, { AxiosRequestConfig, AxiosResponse } from "axios";
+import { AxiosRequestConfig, AxiosResponse } from "axios";
 import urlJoin from "url-join";
-import { getRemoteTorrentFile } from "../utils";
+import { axios, getRemoteTorrentFile } from "../utils";
 import { merge } from "es-toolkit";
 
 /**
@@ -42,7 +50,7 @@ export const clientMetaData: TorrentClientMetaData = {
   warning: [
     "当前仅支持 qBittorrent v4.1+",
     "如果你使用的 qBittorrent 版本大于 5.2.0，可以使用 API Key 形式连接，此时请直接留空用户名，在密码栏输入 API key。",
-    "由于浏览器限制，需要禁用 qBittorrent 的『启用跨站请求伪造(CSRF)保护』功能才能正常使用",
+    "如不便禁用 qBittorrent 的『启用跨站请求伪造(CSRF)保护』功能，可在下方开启『绕过 CSRF 保护』选项",
     "注意：由于 qBittorrent 验证机制限制，第一次测试连接成功后，后续测试无论密码正确与否都会提示成功。",
   ],
   feature: {
@@ -53,6 +61,36 @@ export const clientMetaData: TorrentClientMetaData = {
         `（ qBittorrent 额外支持以 "${category_prefix}" 前缀的分类作为下载目录，当使用该前缀时，请在 qBittorrent 中预设分类信息。）`,
     },
     DefaultAutoStart: {
+      allowed: true,
+    },
+    Recheck: {
+      allowed: true,
+    },
+    Queue: {
+      allowed: true,
+    },
+    SpeedLimit: {
+      allowed: true,
+    },
+    Label: {
+      allowed: true,
+    },
+    BypassCSRF: {
+      allowed: true,
+    },
+    FileList: {
+      allowed: true,
+    },
+    FilePriority: {
+      allowed: true,
+    },
+    PeerList: {
+      allowed: true,
+    },
+    TrackerList: {
+      allowed: true,
+    },
+    TrackerManage: {
       allowed: true,
     },
   },
@@ -122,6 +160,13 @@ interface rawTorrent {
   f_l_piece_prio: boolean; // Torrent first last piece priority state
   completion_on: number; // Torrent copletion datetime in seconds
   tracker: string; // Torrent tracker
+  /**
+   * 是否为私有种子（qBittorrent v5.0.0+ 才提供）
+   * 注意：官方文档中写作 isPrivate，但实际返回的键为 private，此处两者都兼容
+   * refs: https://github.com/qbittorrent/qBittorrent/issues/22113
+   */
+  isPrivate?: boolean;
+  private?: boolean;
   dl_limit: number; // Torrent download limit
   up_limit: number; // Torrent upload limit
   downloaded: number; // Amount of data downloaded
@@ -146,6 +191,33 @@ interface rawTorrent {
 
 interface QbittorrentTorrent extends CTorrent<rawTorrent> {
   id: string;
+}
+
+/**
+ * 从种子列表项中提取 tracker 地址：
+ * qBittorrent 的 /torrents/info 提供了当前生效的 tracker（tracker）以及原始 magnet_uri（其中的 tr 参数），
+ * 用于在不额外请求 /torrents/trackers 的情况下识别种子所属站点（见 MyClient 页面）
+ */
+function extractTrackerUrls(rawTorrent: rawTorrent): string[] | undefined {
+  const urls = new Set<string>();
+  if (rawTorrent.tracker) {
+    urls.add(rawTorrent.tracker);
+  }
+  if (typeof rawTorrent.magnet_uri === "string" && rawTorrent.magnet_uri.includes("?")) {
+    const params = new URLSearchParams(rawTorrent.magnet_uri.split("?")[1] ?? "");
+    for (const trackerUrl of params.getAll("tr")) {
+      if (trackerUrl) urls.add(trackerUrl);
+    }
+  }
+  return urls.size > 0 ? [...urls] : undefined;
+}
+
+/**
+ * 从种子列表项中提取是否为私有种子（qBittorrent v5.0.0+ 提供，qBittorrent 4.x 下为 undefined）
+ */
+function extractIsPrivate(rawTorrent: rawTorrent): boolean | undefined {
+  const isPrivate = rawTorrent.isPrivate ?? rawTorrent.private;
+  return typeof isPrivate === "boolean" ? isPrivate : undefined;
 }
 
 type QbittorrentTorrentFilters =
@@ -196,6 +268,53 @@ const convertMaps: [string, keyof TorrentClientStatus][] = [
   ["up_info_speed", "upSpeed"],
 ];
 
+// qBittorrent 文件优先级: 0=skip, 1=normal, 6=high, 7=maximum
+function mapQBittorrentFilePriority(priority: number): TorrentFilePriority {
+  switch (priority) {
+    case 0:
+      return "skip";
+    case 6:
+      return "high";
+    case 7:
+      return "highest";
+    case 1:
+    default:
+      return "normal";
+  }
+}
+
+function mapTorrentFilePriorityToQBittorrent(priority: TorrentFilePriority): number {
+  switch (priority) {
+    case "skip":
+      return 0;
+    case "high":
+      return 6;
+    case "highest":
+      return 7;
+    case "low":
+    case "normal":
+    default:
+      return 1;
+  }
+}
+
+// qBittorrent tracker status: 0=disabled, 1=notContacted, 2=working, 3=updating, 4=error
+function mapQbittorrentTrackerState(status: number): CTrackerState {
+  switch (status) {
+    case 0:
+      return CTrackerState.disabled;
+    case 2:
+      return CTrackerState.working;
+    case 3:
+      return CTrackerState.updating;
+    case 4:
+      return CTrackerState.error;
+    case 1:
+    default:
+      return CTrackerState.unknown;
+  }
+}
+
 function normalizePieces(pieces: string | string[], joinBy: string = "|"): string {
   if (Array.isArray(pieces)) {
     return pieces.join(joinBy);
@@ -218,6 +337,11 @@ export default class QBittorrent extends AbstractBittorrentClient<TorrentClientC
 
   get isApiKeyAuth(): boolean {
     return !this.config.username && this.config.password.startsWith("qbt_");
+  }
+
+  // 是否启用「绕过 CSRF 保护」：请求时通过 DNR 移除 Origin 头
+  private get bypassCSRF(): boolean {
+    return this.config.feature?.BypassCSRF === true;
   }
 
   async ping(): Promise<boolean> {
@@ -287,6 +411,7 @@ export default class QBittorrent extends AbstractBittorrentClient<TorrentClientC
     return await axios.post(urlJoin(this.config.address, "/api/v2", "/auth/login"), form, {
       timeout: this.config.timeout,
       withCredentials: true,
+      ...(this.bypassCSRF ? { headers: { origin: "" } } : {}),
     });
   }
 
@@ -306,6 +431,13 @@ export default class QBittorrent extends AbstractBittorrentClient<TorrentClientC
       config.headers = {
         ...(config.headers ?? {}),
         Authorization: `Bearer ${this.config.password}`,
+      };
+    }
+
+    if (this.bypassCSRF) {
+      config.headers = {
+        ...(config.headers ?? {}),
+        origin: "", // 空字符串哨兵：replaceUnsafeHeader 拦截器会将其转为移除 Origin 头
       };
     }
 
@@ -509,6 +641,8 @@ export default class QBittorrent extends AbstractBittorrentClient<TorrentClientC
         downloadSpeed: torrent.dlspeed,
         totalUploaded: torrent.uploaded,
         totalDownloaded: torrent.downloaded,
+        isPrivate: extractIsPrivate(torrent),
+        trackerUrls: extractTrackerUrls(torrent),
         raw: torrent,
         clientId: this.config.id,
       } as QbittorrentTorrent;
@@ -580,5 +714,215 @@ export default class QBittorrent extends AbstractBittorrentClient<TorrentClientC
     const hash = torrent.infoHash || (torrent.id as string);
     const { data } = await this.request<Array<{ url: string }>>("/torrents/trackers", { params: { hash } });
     return data.map((t) => t.url);
+  }
+
+  // 重新校验种子
+  override async recheckTorrent(id: any): Promise<boolean> {
+    await this.request("/torrents/recheck", {
+      method: "post",
+      data: { hashes: normalizePieces(id) },
+    });
+    return true;
+  }
+
+  // 调整种子在队列中的位置
+  override async moveTorrentInQueue(id: any, direction: TorrentQueueDirection): Promise<boolean> {
+    const endpointMap: Record<TorrentQueueDirection, string> = {
+      top: "/torrents/topPrio",
+      up: "/torrents/increasePrio",
+      down: "/torrents/decreasePrio",
+      bottom: "/torrents/bottomPrio",
+    };
+    await this.request(endpointMap[direction], {
+      method: "post",
+      data: { hashes: normalizePieces(id) },
+    });
+    return true;
+  }
+
+  // 设置单个种子的速度限制（单位 KiB/s，0 表示不限速；qBittorrent 使用 bytes/s，-1 表示不限速）
+  override async setTorrentSpeedLimit(id: any, limits: TorrentSpeedLimit): Promise<boolean> {
+    const hash = normalizePieces(id);
+    const requests: Promise<any>[] = [];
+
+    if (typeof limits.download !== "undefined") {
+      requests.push(
+        this.request("/torrents/setLimit", {
+          method: "post",
+          data: { hashes: hash, limit: limits.download > 0 ? limits.download * 1024 : -1 },
+        }),
+      );
+    }
+
+    if (typeof limits.upload !== "undefined") {
+      requests.push(
+        this.request("/torrents/setUploadLimit", {
+          method: "post",
+          data: { hashes: hash, limit: limits.upload > 0 ? limits.upload * 1024 : -1 },
+        }),
+      );
+    }
+
+    await Promise.all(requests);
+    return true;
+  }
+
+  // 设置单个种子的分类（qBittorrent 的 label 即 category）
+  override async setTorrentLabel(id: any, label: string): Promise<boolean> {
+    await this.request("/torrents/setCategory", {
+      method: "post",
+      data: { hashes: normalizePieces(id), category: label },
+    });
+    return true;
+  }
+
+  // ─────────────────────────────────────────────
+  // 文件级 / peers / tracker 管理（qBittorrent WebAPI v2）
+  // ─────────────────────────────────────────────
+
+  private getTorrentHash(torrent: string | CTorrent): string {
+    if (typeof torrent === "string") {
+      return torrent;
+    }
+    return (torrent.infoHash || (torrent.id as string)) as string;
+  }
+
+  // 文件列表: GET /torrents/files
+  override async getTorrentFiles(torrent: string | CTorrent): Promise<CTorrentFile[]> {
+    const { data: files } = await this.request<
+      Array<{
+        index: number;
+        name: string;
+        size: number;
+        progress: number; // 0-1
+        priority: number; // 0/1/6/7
+        is_seed: boolean;
+      }>
+    >("/torrents/files", { params: { hash: this.getTorrentHash(torrent) } });
+
+    return files.map((file) => {
+      const priority = mapQBittorrentFilePriority(file.priority);
+      return {
+        index: file.index,
+        name: file.name,
+        path: file.name,
+        size: file.size,
+        progress: file.progress * 100,
+        priority,
+        wanted: priority !== "skip",
+        raw: file,
+      };
+    });
+  }
+
+  // 文件优先级/选择: POST /torrents/filePrio，同一优先级合并为一次请求
+  override async setTorrentFilePriority(
+    torrent: string | CTorrent,
+    selections: CTorrentFileSelection[],
+  ): Promise<boolean> {
+    if (selections.length === 0) {
+      return true;
+    }
+    const hash = this.getTorrentHash(torrent);
+
+    const grouped = new Map<number, string[]>();
+    for (const selection of selections) {
+      const priority = mapTorrentFilePriorityToQBittorrent(selection.priority);
+      const ids = grouped.get(priority) ?? [];
+      ids.push(String(selection.index));
+      grouped.set(priority, ids);
+    }
+
+    for (const [priority, ids] of grouped) {
+      await this.request("/torrents/filePrio", {
+        method: "post",
+        data: { hash, id: ids.join("|"), priority },
+      });
+    }
+    return true;
+  }
+
+  // peer 列表: GET /sync/torrentPeers（注意拼写为 torrentPeers 单数词，peers 为按 peer id 键控的对象）
+  override async getTorrentPeers(torrent: string | CTorrent): Promise<CTorrentPeer[]> {
+    const { data } = await this.request<{
+      peers?: Record<
+        string,
+        {
+          client?: string;
+          connection?: string;
+          country?: string;
+          downloaded?: number;
+          ip?: string;
+          port?: number;
+          progress?: number; // 0-1
+          uploaded?: number;
+          dl_speed?: number;
+          up_speed?: number;
+          download_speed?: number; // 部分旧版本字段
+          upload_speed?: number;
+          flags?: string;
+          flags_desc?: string;
+        }
+      >;
+    }>("/sync/torrentPeers", { params: { hash: this.getTorrentHash(torrent) } });
+
+    return Object.values(data.peers ?? {}).map((peer) => ({
+      ip: peer.ip ?? "",
+      port: peer.port,
+      client: peer.client,
+      progress: (peer.progress ?? 0) * 100,
+      downloadSpeed: peer.dl_speed ?? peer.download_speed ?? 0,
+      uploadSpeed: peer.up_speed ?? peer.upload_speed ?? 0,
+      totalDownloaded: peer.downloaded,
+      totalUploaded: peer.uploaded,
+      country: peer.country,
+      flags: peer.flags_desc ? String(peer.flags_desc).split(",").filter(Boolean) : [],
+      raw: peer,
+    }));
+  }
+
+  // tracker 列表（带状态）: GET /torrents/trackers
+  override async getTorrentTrackersDetail(torrent: string | CTorrent): Promise<CTorrentTracker[]> {
+    const { data: trackers } = await this.request<
+      Array<{
+        url: string;
+        status: number;
+        tier: number;
+        msg: string;
+        num_seeds?: number;
+        num_leeches?: number;
+        num_downloaded?: number;
+      }>
+    >("/torrents/trackers", { params: { hash: this.getTorrentHash(torrent) } });
+
+    return trackers.map((tracker) => ({
+      url: tracker.url,
+      tier: tracker.tier ?? 0,
+      status: mapQbittorrentTrackerState(tracker.status),
+      statusMessage: tracker.msg,
+      seeds: tracker.num_seeds,
+      leeches: tracker.num_leeches,
+      downloaded: tracker.num_downloaded,
+      enabled: tracker.status !== 0,
+      raw: tracker,
+    }));
+  }
+
+  // 新增 tracker: POST /torrents/addTrackers
+  override async addTorrentTracker(torrent: string | CTorrent, url: string): Promise<boolean> {
+    await this.request("/torrents/addTrackers", {
+      method: "post",
+      data: { hash: this.getTorrentHash(torrent), urls: url },
+    });
+    return true;
+  }
+
+  // 删除 tracker: POST /torrents/removeTrackers
+  override async removeTorrentTracker(torrent: string | CTorrent, url: string): Promise<boolean> {
+    await this.request("/torrents/removeTrackers", {
+      method: "post",
+      data: { hash: this.getTorrentHash(torrent), urls: url },
+    });
+    return true;
   }
 }

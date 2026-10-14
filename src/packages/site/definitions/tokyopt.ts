@@ -1,3 +1,6 @@
+/**
+ * @PDSDefinitions https://github.com/mantou568/pre-dessert-sites/blob/main/site_config/sites/tokyopt.json
+ */
 import type { ISiteMetadata } from "../types";
 //import { CategoryInclbookmarked, CategoryIncldead, CategorySpstate, SchemaMetadata } from "../schemas/NexusPHP";
 
@@ -12,10 +15,10 @@ export const siteMetadata: ISiteMetadata = {
   type: "private",
   schema: "NexusPHP",
 
-  urls: ["uggcf://jjj.gbxlbcg.klm/"],
-
-  // dead at 2026-02-24 ( from savept.icu
-  isDead: true,
+  // 原域名 tokyopt.xyz 已于 2026-02-24 关站；站点迁至 tokyo-manga.top 并恢复服务（站点自述为 TokyoPT）
+  // refs: https://savept.icu/
+  urls: ["uggcf://jjj.gbxlb-znatn.gbc/"],
+  legacyUrls: ["uggcf://jjj.gbxlbcg.klm/"],
 
   /*
   category: [

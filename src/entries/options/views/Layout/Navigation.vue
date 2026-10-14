@@ -18,7 +18,9 @@ const configStore = useConfigStore();
 // 当页面窗口大小发生变化时，调整 Navigation 的显示
 const display = useDisplay();
 watch(display.mdAndUp, () => {
-  configStore.isNavBarOpen = display.mdAndUp.value;
+  if (configStore.autoToggleNavBarOnDisplayChange) {
+    configStore.isNavBarOpen = display.mdAndUp.value;
+  }
 });
 
 // 自动从router.ts生成目录
@@ -40,12 +42,6 @@ const menuOptions = routes
         }),
     };
   }); // 根据 meta 的 isMainMenu 属性筛选出应该列在目录中的路径
-
-function clickMenuItem() {
-  if (display.smAndDown.value && configStore.isNavBarOpen) {
-    configStore.isNavBarOpen = false;
-  }
-}
 </script>
 
 <template>
@@ -63,7 +59,6 @@ function clickMenuItem() {
           :to="{ name: nav.name }"
           :value="nav"
           class="list-item-half-spacer"
-          @click="clickMenuItem"
         >
           {{ t(nav.title) }}
         </v-list-item>
@@ -72,8 +67,8 @@ function clickMenuItem() {
 
     <!-- 页脚，用于展示版本信息 -->
     <template v-slot:append>
-      <v-footer>
-        <v-row justify="center">
+      <v-footer class="pa-0">
+        <v-row gap="0" class="justify-center">
           <span class="pa-2 text-grey-darken-1">
             &copy; {{ year }},
             <a :href="`${REPO_URL}${git.long ? `/commit/${git.long}` : ''}`" target="_blank">{{ ext_version }}</a>

@@ -49,6 +49,9 @@
       "selectDownloader": "Select Downloader",
       "title": "Re-download {0} records"
     },
+    "detail": {
+      "errorMessage": "Error Message"
+    },
     "filterPlaceholder": "Filter download history",
     "reDownload": "Re-download",
     "refresh": "Refresh download history list",
@@ -125,15 +128,27 @@
     "detail": "Details",
     "loadMore": "Load More",
     "noItems": "No Items, use Search Input or Load More Button to Load",
-    "searchPlaceholder": "Search term"
+    "searchPlaceholder": "Search term",
+    "serverFilter": {
+      "all": "All Servers"
+    }
   },
   "MyClient": {
     "action": {
       "delete": "Delete",
+      "detail": "Details",
+      "moveQueueSuccess": "Moved {count} torrent(s) in queue",
       "pause": "Pause",
       "pauseError": "Failed to pause",
       "pauseSelectedSuccess": "Paused {count} torrent(s)",
       "pauseSuccess": "Paused successfully",
+      "queue": "Queue Position",
+      "queueBottom": "Move to Bottom",
+      "queueDown": "Move Down",
+      "queueTop": "Move to Top",
+      "queueUp": "Move Up",
+      "recheck": "Recheck",
+      "recheckSelectedSuccess": "Rechecked {count} torrent(s)",
       "resume": "Resume",
       "resumeError": "Failed to resume",
       "resumeSelectedSuccess": "Resumed {count} torrent(s)",
@@ -160,8 +175,60 @@
     },
     "columnSelector": "Columns",
     "deleteSelected": "Delete",
+    "detail": {
+      "addTrackerFailure": "Failed to add tracker",
+      "addTrackerSuccess": "Tracker added",
+      "addTrackerTitle": "Add Tracker",
+      "copyHash": "Copy Hash",
+      "copyMagnet": "Copy Magnet Link",
+      "fileColumnName": "File",
+      "fileColumnPriority": "Priority",
+      "fileColumnProgress": "Progress",
+      "fileColumnSize": "Size",
+      "fileTitle": "Files",
+      "fileUnsupported": "This downloader does not support file management",
+      "noFiles": "No files",
+      "noPeers": "No peer connections",
+      "noTrackers": "This downloader does not support fetching trackers or has no trackers",
+      "operatorFailed": "Operation failed",
+      "peersColumnClient": "Client",
+      "peersColumnCountry": "Country",
+      "peersColumnDownloadSpeed": "DL",
+      "peersColumnEncrypted": "Enc",
+      "peersColumnIp": "IP",
+      "peersColumnProgress": "Progress",
+      "peersColumnUploadSpeed": "UL",
+      "peersTitle": "Peers",
+      "peersUnsupported": "This downloader does not support viewing peers",
+      "priorityHighest": "Highest",
+      "priorityHigh": "High",
+      "priorityLow": "Low",
+      "priorityNormal": "Normal",
+      "prioritySkip": "Skip",
+      "removeTracker": "Remove",
+      "removeTrackerFailure": "Failed to remove tracker",
+      "removeTrackerSuccess": "Tracker removed",
+      "title": "Torrent Details",
+      "trackerColumnLastAnnounce": "Last Announce",
+      "trackerColumnLeeches": "Leeches",
+      "trackerColumnSeeds": "Seeds",
+      "trackerColumnStatus": "Status",
+      "trackerColumnTier": "Tier",
+      "trackerColumnUrl": "URL",
+      "trackers": "Trackers",
+      "trackerUnsupported": "This downloader does not support tracker management",
+      "updateFilePriorityFailure": "Failed to update file priority",
+      "updateFilePrioritySuccess": "File priority updated"
+    },
     "dialog": {
       "removeData": "Also remove data"
+    },
+    "label": {
+      "batchBtn": "Set Label",
+      "emptyLabel": "Label cannot be empty",
+      "input": "Label",
+      "success": "Labeled {count} torrent(s)",
+      "title": "Set Label ({count} torrent(s))"
     },
     "pauseSelected": "Pause",
     "pushToDownloader": {
@@ -174,9 +241,27 @@
       "urlInputHint": "One URL or magnet link per line",
       "urlInputLabel": "URLs / Magnet Links"
     },
+    "recheckSelected": "Recheck",
+    "recheckDialog": {
+      "text": "Are you sure you want to recheck the selected {count} torrent(s)? Rechecking consumes downloader resources and may temporarily interrupt seeding.",
+      "title": "Confirm Recheck"
+    },
     "refresh": "Refresh",
     "resumeSelected": "Resume",
     "searchPlaceholder": "Search by name, hash, label, or path",
+    "sitePublic": "Public",
+    "sitePublicTip": "Public torrent: marked as public by the client, or its tracker only matches a public site",
+    "siteUnmatched": "Unmatched",
+    "siteUnmatchedTip": "No added site matched this torrent; if the site uses a dedicated tracker domain, declare trackerUrls in its definition",
+    "speedLimit": {
+      "batchBtn": "Speed Limit",
+      "download": "Download Limit (KiB/s, 0 = unlimited)",
+      "emptyLimit": "Please fill in at least one of upload or download limit",
+      "success": "Limited {count} torrent(s)",
+      "title": "Set Speed Limit ({count} torrent(s))",
+      "unitNote": "Speed limit unit is KiB/s; 0 means unlimited, empty means do not change this direction.",
+      "upload": "Upload Limit (KiB/s, 0 = unlimited)"
+    },
     "state": {
       "checking": "Checking",
       "downloading": "Downloading",
@@ -336,6 +421,7 @@
       "moveUp": "Move Up in the Queue",
       "searchAgain": "Search Again",
       "statusMsg": {
+        "networkError": "Network request failed (timeout / DNS / blocked)",
         "noAdvanceParams": "Advance parameter not supported",
         "noEmptyKeywords": "Empty keywords not supported",
         "noNonLatin": "Non-Latin characters not supported",
@@ -369,6 +455,7 @@
         "snapshot": "Search Snapshot"
       },
       "filterLabel": "Filter search results",
+      "highlightSameSizeTorrent": "Mark same-size torrents when sorted by size",
       "limitTorrentTitleTdWidth": "Limit torrent title column width",
       "selectedTorrents": "Selected {0} torrents",
       "showSiteName": "Show Site Name",
@@ -431,9 +518,46 @@
     },
     "Editor": {
       "backupConfig": "Backup Configuration",
+      "backupFields": "Backup Content",
       "backupInterval": "Auto Backup Interval",
-      "backupIntervalHint": "Set auto-backup interval (hours). Leave empty or 0 to disable auto backup. Max 48 hours.",
+      "backupIntervalField": "Interval (hours)",
+      "backupIntervalHint": "Set auto-backup interval (hours). Leave empty or 0 to disable auto backup. Any length is allowed (e.g. 168 hours = 7 days).",
+      "clearRetention": "Clear retention policy (never clean up historical backups)",
+      "retention": "Backup Retention Policy",
       "serverConfig": "Server Configuration"
+    },
+    "RetentionDialog": {
+      "count": {
+        "maxCount": "Number of backups to keep",
+        "title": "Keep by Count"
+      },
+      "countSuffix": "backups",
+      "daySuffix": "days",
+      "none": "No retention policy enabled, historical backups will not be cleaned up automatically",
+      "sample": {
+        "hint": "Within a time range of \"number of windows × window width\", keep the newest backup of each window (similar to Borg's prune)",
+        "horizon": "Windows to keep",
+        "interval": "Window width",
+        "title": "Keep by Time-Window Sampling",
+        "type": {
+          "day": "Daily",
+          "month": "Monthly",
+          "week": "Weekly",
+          "year": "Yearly"
+        }
+      },
+      "summary": {
+        "count": "keep last {n}",
+        "sample": "{type} keep {n} (window {interval} days)",
+        "separator": ", ",
+        "time": "keep {n} days"
+      },
+      "time": {
+        "maxAge": "Days to keep",
+        "title": "Keep by Age"
+      },
+      "tip": "The retention policy cleans up remote historical backup files after each successful backup. Multiple rules are combined as a union: a backup kept by any rule will never be removed.",
+      "title": "Backup Retention Policy"
     },
     "HistoryDialog": {
       "deleteFailure": "Failed to delete backup history [{name}]",
@@ -478,7 +602,8 @@
     "localImport": "Local Import",
     "snackbar": {
       "failure": "Backup failed",
-      "success": "Backup successful"
+      "success": "Backup successful",
+      "successWithRetention": "Backup successful, expired backups cleaned up"
     },
     "table": {
       "action": {
@@ -489,12 +614,15 @@
       "backupInterval": "Auto Backup Interval",
       "everyNHour": "Every {n} h",
       "lastBackupAt": "Last Backup Time",
-      "notBackup": "Not Backed Up"
+      "notBackup": "Not Backed Up",
+      "retention": "Retention",
+      "retentionDisabled": "Retention policy disabled",
+      "retentionEnabled": "Retention policy enabled"
     }
   },
   "SetBase": {
     "download": {
-      "MyClientTitle": "My Downloader",
+      "myClientTitle": "My Downloader",
       "allowDirectSendToClient": "Allow sending links directly (instead of torrent files) to the download server (Do not enable unless necessary)",
       "enableSiteFilter": "Enable site filter (configure per-downloader site filtering in downloader settings)",
       "initDownloaderTorrentOnEnter": "Automatically load torrents from the downloader when entering the My Downloader page",
@@ -551,6 +679,8 @@
     "ui": {
       "allowDragLink": "Allow dragging links to the sidebar button",
       "allowExceptionSites": "Allow setting exception sites without sidebar (enable in site settings)",
+      "autoToggleNavBarOnDisplayChange": "Auto expand/collapse the sidebar when the window size changes",
+      "autoToggleNavBarOnDisplayChangeNote": "When disabled, resizing the window will not change the sidebar state automatically; control it manually via the top bar button.",
       "basicSettings": "Basic Settings",
       "changeLanguage": "Switch Language",
       "confirmTwoStep": "Require two-step confirmation for batch copy, local download, etc. on torrent list pages",
@@ -560,6 +690,7 @@
       "contextMenuLinkPush": "Enable (download) link push",
       "contextMenuSocialSearch": "Enable social link (douban, imdb) search",
       "contextMenuTextSearch": "Enable selected text search",
+      "dataTable": "Data Table",
       "displayMode": {
         "auto": "Auto (Follow Browser or System)",
         "dark": "Dark Mode",
@@ -583,6 +714,11 @@
         "title": "Search by Main Title"
       },
       "socialSiteSearchLabel": "Social site search method",
+      "tableActionColumnFixed": "Fix action column when the table is too wide",
+      "tableActionColumnFixedNote": "Takes effect only when the table content is wider than the page and scrolls horizontally: the action column stays pinned to its side (row start or row end) while scrolling.",
+      "tableActionColumnPosition": "Action column position",
+      "tableActionColumnPositionEnd": "Row end (default)",
+      "tableActionColumnPositionStart": "Row start",
       "tableMultiSortNote": "Multi-column sorting: Click any table header field to start sorting, which will display the number \\\"1\\\" on the field. Click other fields sequentially to display \\\"2\\\", \\\"3\\\", indicating sorting priority. Click the same field again to toggle between ascending, descending, or cancel sorting. The sorting order is determined by these numbers, with smaller numbers having higher priority.",
       "useLargeIcon": "Use large icon buttons"
     },
@@ -669,16 +805,18 @@
       "editDefaultDownloaderBtn": "Edit Default Downloader",
       "emptyNotice": "Before using the download service, you need to add at least one download server.",
       "remove": {
+        "defaultNotDeleted": "Skipped the Default Downloader [{0}]: it cannot be deleted. Please switch to another download server in 'Edit Default Downloader' first.",
         "multi": "Are you sure to delete these {count} download servers?",
         "single": "Are you sure to delete this download server?"
       },
       "table": {
         "action": {
+          "deleteDefaultDownloader": "This download server is the current Default Downloader and cannot be deleted. Please switch to another download server in 'Edit Default Downloader' first.",
           "deleteDownloader": "Delete this downloader server",
           "setDefault": "Set this downloader server as Default Downloader.",
           "setPathAndTag": "Set Suggest Download Path and Tags",
           "setSiteFilter": "Set Site Filter",
-          "status": "Status"
+          "status": "Manage Download Server"
         },
         "autodl": "Auto DL ?",
         "downloaderCategory": "Downloader Category",
@@ -834,8 +972,12 @@
         "Only the configured site will display the plugin icon and the corresponding function;",
         "the offline site will no longer participate in the search and information acquisition;"
       ],
+      "sortIndexRedistributed": "Site priorities have been redistributed (the order of the sites is unchanged)",
       "table": {
         "flushFavicon": "Refresh Site Favicon",
+        "moveDown": "Move Down (long press to move to bottom)",
+        "moveNeedSortIndex": "Sort by the № column to reorder sites",
+        "moveUp": "Move Up (long press to move to top)",
         "searchEntries": "Search Entries"
       }
     },
@@ -843,6 +985,9 @@
       "alert1": "This operation will attempt to import the sites you select with default configurations. Please ensure you have logged into these sites in your browser. The import process cannot be interrupted, please wait patiently.",
       "alert2": "List of unadded sites",
       "importComplete": "One-click import complete, successfully added {count} sites",
+      "includePublicSite": "Include public sites ({count})",
+      "includePublicSiteHint": "Public sites cannot be verified by a search and are written directly when added. They are hidden from the list by default; when enabled they appear in the list and join \"ALL\", and disabling it deselects any selected public sites",
+      "loading": "Loading site definitions… ({loaded} loaded)",
       "stats": "Selected {count} sites, added {success} sites, failed to add {failed} sites.",
       "status": {
         "failed": "Failed to add",
@@ -926,12 +1071,14 @@
       "siteDisplay": "Site Display Component",
       "statsSection": "Statistics Section",
       "styleSettings": "Timeline Style Settings",
+      "textColor": "Other Text Color",
       "timeAdded": "Event Time",
       "timeAlive": "Time Elapsed",
       "timeDisplay": "Time Display Method",
       "timelineSection": "Timeline Section",
       "timelineTitle": "Timeline Title",
-      "usernameAndTitle": "Username & Title"
+      "usernameAndTitle": "Username & Title",
+      "userNameColor": "Username Color"
     },
     "exportFilename": "{name}'s Timeline ({date})",
     "field": {
@@ -1007,6 +1154,7 @@
     "import": "Import",
     "language": "Language",
     "name": "Name",
+    "noData": "No Data",
     "project": "PT Depiler",
     "remove": "Delete",
     "save": "Save",
@@ -1187,6 +1335,7 @@
     "CFBlocked": "Cloudflare Error!",
     "CFBlockedNotes": "It may be because the site has enabled CloudFlare's security protection, which makes it impossible to retrieve data. You can first try to manually access the site once to pass the verification. If that doesn't work, just wait for the site to recover on its own.",
     "needLogin": "Login Required!",
+    "noUserInput": "Please fill in the Token/Key!",
     "noResults": "No Results!",
     "parseError": "Parse Error!",
     "passParse": "Passed!",

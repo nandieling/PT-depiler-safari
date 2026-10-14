@@ -1,3 +1,6 @@
+/**
+ * @PTPPDefinitions https://github.com/pt-plugins/PT-Plugin-Plus/blob/dev/resource/sites/gay-torrents.org/config.json
+ */
 import { ISiteMetadata } from "../types";
 
 export const siteMetadata: ISiteMetadata = {
@@ -6,8 +9,12 @@ export const siteMetadata: ISiteMetadata = {
   name: "Gay-Torrents.Org",
   tags: ["成人"],
   type: "private",
-  urls: ["https://gay-torrents.org/"],
+  urls: ["uggcf://tnl-gbeeragf.bet/"],
 
+  // refs: https://github.com/Jackett/Jackett/issues/15022#issuecomment-4578554039
+  isDead: true,
+
+  /**
   category: [
     {
       name: "Status",
@@ -181,6 +188,7 @@ export const siteMetadata: ISiteMetadata = {
       },
     ],
   },
+   */
 
   levelRequirements: [
     {

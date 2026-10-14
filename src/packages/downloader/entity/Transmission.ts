@@ -9,6 +9,14 @@ import {
   CTorrentState,
   TorrentClientStatus,
   CAddTorrentResult,
+  TorrentQueueDirection,
+  TorrentSpeedLimit,
+  CTorrentFile,
+  CTorrentFileSelection,
+  CTorrentPeer,
+  CTorrentTracker,
+  CTrackerState,
+  TorrentFilePriority,
 } from "../types";
 import urlJoin from "url-join";
 import axios, { type AxiosResponse, isAxiosError } from "axios";
@@ -37,6 +45,36 @@ export const clientMetaData: TorrentClientMetaData = {
     DefaultAutoStart: {
       allowed: true,
     },
+    Recheck: {
+      allowed: true,
+    },
+    Queue: {
+      allowed: true,
+    },
+    SpeedLimit: {
+      allowed: true,
+    },
+    Label: {
+      allowed: true,
+    },
+    BypassCSRF: {
+      allowed: false,
+    },
+    FileList: {
+      allowed: true,
+    },
+    FilePriority: {
+      allowed: true,
+    },
+    PeerList: {
+      allowed: true,
+    },
+    TrackerList: {
+      allowed: true,
+    },
+    TrackerManage: {
+      allowed: true,
+    },
   },
 };
 
@@ -46,6 +84,7 @@ interface rawTorrent {
   id: number;
   hashString: string;
   isFinished: boolean;
+  isPrivate: boolean;
   name: string;
   percentDone: number;
   uploadRatio: number;
@@ -54,6 +93,10 @@ interface rawTorrent {
   totalSize: number;
   leftUntilDone: number;
   labels: string[];
+  /**
+   * 注意：Transmission RPC 实际接受的字段名不带 " (B/s)" 后缀（rpc-spec.md 中旧命名为 rateDownload (B/s)，
+   * 但实测 Transmission 4.x 返回的 key 为 rateDownload / rateUpload，带后缀的字段名会被静默忽略）
+   */
   rateDownload: number;
   rateUpload: number;
   /**
@@ -127,7 +170,12 @@ type TransmissionRequestMethod =
   | "torrent-start"
   | "torrent-stop"
   | "torrent-remove"
-  | "torrent-set";
+  | "torrent-verify"
+  | "torrent-set"
+  | "queue-move-top"
+  | "queue-move-up"
+  | "queue-move-down"
+  | "queue-move-bottom";
 
 interface TransmissionAddTorrentOptions {
   "download-dir": string;
@@ -193,8 +241,8 @@ type TransmissionTorrentsField =
   | "pieceSize"
   | "priorities"
   | "queuePosition"
-  | "rateDownload (B/s)"
-  | "rateUpload (B/s)"
+  | "rateDownload"
+  | "rateUpload"
   | "recheckProgress"
   | "secondsDownloading"
   | "secondsSeeding"
@@ -225,6 +273,43 @@ interface TransmissionTorrentRemoveArguments extends TransmissionTorrentArgument
   "delete-local-data"?: boolean;
 }
 
+// Transmission 文件优先级: 0=normal, -1=low, 1=high; wanted=false 即 skip
+function mapTransmissionFilePriority(priority: number, wanted: boolean): TorrentFilePriority {
+  if (!wanted) {
+    return "skip";
+  }
+  switch (priority) {
+    case -1:
+      return "low";
+    case 1:
+      return "high";
+    case 0:
+    default:
+      return "normal";
+  }
+}
+
+// Transmission trackerStats: announceState 0=inactive 1=waiting 2=queued 3=active; lastAnnounceSucceeded 标志错误
+function mapTransmissionTrackerState(tracker: {
+  announceState: number;
+  lastAnnounceSucceeded: boolean;
+  isBackup: boolean;
+}): CTrackerState {
+  if (tracker.lastAnnounceSucceeded === false) {
+    return CTrackerState.error;
+  }
+  if (tracker.announceState === 3) {
+    return CTrackerState.working;
+  }
+  if (tracker.announceState === 1 || tracker.announceState === 2) {
+    return CTrackerState.updating;
+  }
+  if (tracker.isBackup) {
+    return CTrackerState.disabled;
+  }
+  return CTrackerState.unknown;
+}
+
 // noinspection JSUnusedGlobalSymbols
 export default class Transmission extends AbstractBittorrentClient<TorrentClientConfig> {
   readonly version = "v0.1.0";
@@ -234,6 +319,7 @@ export default class Transmission extends AbstractBittorrentClient<TorrentClient
     "id",
     "hashString",
     "isFinished",
+    "isPrivate",
     "name",
     "percentDone",
     "uploadRatio",
@@ -243,6 +329,11 @@ export default class Transmission extends AbstractBittorrentClient<TorrentClient
     "leftUntilDone",
     "labels",
     "trackers",
+    // 上传/下载速度与总量
+    "rateDownload",
+    "rateUpload",
+    "uploadedEver",
+    "downloadedEver",
   ];
 
   // 实例真实使用的rpc地址
@@ -437,6 +528,8 @@ export default class Transmission extends AbstractBittorrentClient<TorrentClient
         downloadSpeed: torrent.rateDownload,
         totalUploaded: torrent.uploadedEver,
         totalDownloaded: torrent.downloadedEver,
+        isPrivate: torrent.isPrivate,
+        trackerUrls: (torrent.trackers ?? []).map((tracker) => tracker.announce).filter(Boolean),
         raw: torrent,
         clientId: this.config.id,
       } as CTorrent<rawTorrent>;
@@ -489,6 +582,249 @@ export default class Transmission extends AbstractBittorrentClient<TorrentClient
     }
 
     return (trackers ?? []).map((t) => t.announce);
+  }
+
+  // 重新校验种子（Transmission RPC: torrent-verify）
+  override async recheckTorrent(id: any): Promise<boolean> {
+    const args: TransmissionTorrentArguments = {
+      ids: id,
+    };
+    await this.request("torrent-verify", args);
+    return true;
+  }
+
+  // 调整种子在队列中的位置（Transmission RPC: queue-move-*）
+  override async moveTorrentInQueue(id: any, direction: TorrentQueueDirection): Promise<boolean> {
+    const methodMap: Record<TorrentQueueDirection, TransmissionRequestMethod> = {
+      top: "queue-move-top",
+      up: "queue-move-up",
+      down: "queue-move-down",
+      bottom: "queue-move-bottom",
+    };
+    const args: TransmissionTorrentArguments = {
+      ids: id,
+    };
+    await this.request(methodMap[direction], args);
+    return true;
+  }
+
+  // 设置单个种子的速度限制（单位 KiB/s，0 表示不限速；Transmission 使用 KB/s）
+  override async setTorrentSpeedLimit(id: any, limits: TorrentSpeedLimit): Promise<boolean> {
+    const args: TransmissionTorrentArguments & {
+      "upload-limit"?: number;
+      "upload-limited"?: boolean;
+      "download-limit"?: number;
+      "download-limited"?: boolean;
+    } = {
+      ids: id,
+    };
+
+    if (typeof limits.upload !== "undefined") {
+      args["upload-limit"] = limits.upload;
+      args["upload-limited"] = limits.upload > 0;
+    }
+
+    if (typeof limits.download !== "undefined") {
+      args["download-limit"] = limits.download;
+      args["download-limited"] = limits.download > 0;
+    }
+
+    await this.request("torrent-set", args);
+    return true;
+  }
+
+  // 设置单个种子的标签
+  override async setTorrentLabel(id: any, label: string): Promise<boolean> {
+    const args = {
+      ids: id,
+      labels: [label],
+    };
+    await this.request("torrent-set", args);
+    return true;
+  }
+
+  // ─────────────────────────────────────────────
+  // 文件级 / peers / tracker 管理（Transmission RPC）
+  // ─────────────────────────────────────────────
+
+  private getTorrentId(torrent: string | CTorrent): number | string {
+    if (typeof torrent === "string") {
+      return torrent;
+    }
+    return torrent.id;
+  }
+
+  // 文件列表: torrent-get files + fileStats
+  override async getTorrentFiles(torrent: string | CTorrent): Promise<CTorrentFile[]> {
+    const {
+      data: { arguments: args },
+    } = await this.request<
+      TransmissionBaseResponse<{
+        torrents: Array<{
+          files: Array<{ name: string; length: number; bytesCompleted: number }>;
+          fileStats: Array<{ bytesCompleted: number; wanted: boolean; priority: number }>;
+        }>;
+      }>
+    >("torrent-get", {
+      ids: [this.getTorrentId(torrent)],
+      fields: ["files", "fileStats"],
+    });
+
+    const raw = args.torrents[0];
+    const files = raw?.files ?? [];
+    const fileStats = raw?.fileStats ?? [];
+
+    return files.map((file, index) => {
+      const stat = fileStats[index];
+      const wanted = stat?.wanted ?? false;
+      const priority = stat ? mapTransmissionFilePriority(stat.priority, stat.wanted) : "normal";
+      return {
+        index,
+        name: file.name,
+        path: file.name,
+        size: file.length,
+        progress: file.length > 0 ? ((stat?.bytesCompleted ?? 0) / file.length) * 100 : 0,
+        priority,
+        wanted,
+        raw: { file, stat },
+      } as CTorrentFile;
+    });
+  }
+
+  // 文件优先级/选择: torrent-set files-wanted / files-unwanted / priority-*
+  override async setTorrentFilePriority(
+    torrent: string | CTorrent,
+    selections: CTorrentFileSelection[],
+  ): Promise<boolean> {
+    if (selections.length === 0) {
+      return true;
+    }
+    const wanted = selections.filter((s) => s.priority !== "skip");
+    const unwanted = selections.filter((s) => s.priority === "skip");
+
+    const args: Record<string, any> = { ids: this.getTorrentId(torrent) };
+    if (unwanted.length) {
+      args["files-unwanted"] = unwanted.map((s) => s.index);
+    }
+    if (wanted.length) {
+      args["files-wanted"] = wanted.map((s) => s.index);
+
+      const low = wanted.filter((s) => s.priority === "low").map((s) => s.index);
+      const normal = wanted.filter((s) => s.priority === "normal").map((s) => s.index);
+      // Transmission 无 highest，映射为 high
+      const high = wanted.filter((s) => s.priority === "high" || s.priority === "highest").map((s) => s.index);
+      if (low.length) args["priority-low"] = low;
+      if (normal.length) args["priority-normal"] = normal;
+      if (high.length) args["priority-high"] = high;
+    }
+
+    await this.request("torrent-set", args);
+    return true;
+  }
+
+  // peer 列表: torrent-get peers
+  override async getTorrentPeers(torrent: string | CTorrent): Promise<CTorrentPeer[]> {
+    const {
+      data: { arguments: args },
+    } = await this.request<
+      TransmissionBaseResponse<{
+        torrents: Array<{
+          peers: Array<{
+            address: string;
+            clientName?: string;
+            flagStr?: string;
+            isEncrypted?: boolean;
+            isIncoming?: boolean;
+            isUTP?: boolean;
+            port?: number;
+            progress?: number; // 0-1
+            rateToClient?: number;
+            rateToPeer?: number;
+          }>;
+        }>;
+      }>
+    >("torrent-get", {
+      ids: [this.getTorrentId(torrent)],
+      fields: ["peers"],
+    });
+
+    const peers = args.torrents[0]?.peers ?? [];
+
+    return peers
+      .filter((peer) => !!peer.address)
+      .map((peer) => ({
+        ip: peer.address,
+        port: peer.port,
+        client: peer.clientName,
+        progress: (peer.progress ?? 0) * 100,
+        downloadSpeed: peer.rateToClient ?? 0,
+        uploadSpeed: peer.rateToPeer ?? 0,
+        incoming: peer.isIncoming,
+        encrypted: peer.isEncrypted,
+        obfuscated: peer.isUTP,
+        flags: peer.flagStr ? peer.flagStr.split("").filter(Boolean) : [],
+        raw: peer,
+      }));
+  }
+
+  // tracker 列表（带状态）: torrent-get trackerStats
+  override async getTorrentTrackersDetail(torrent: string | CTorrent): Promise<CTorrentTracker[]> {
+    const {
+      data: { arguments: args },
+    } = await this.request<
+      TransmissionBaseResponse<{
+        torrents: Array<{
+          trackerStats: Array<{
+            announce: string;
+            announceState: number;
+            downloadCount?: number;
+            isBackup: boolean;
+            lastAnnounceResult?: string;
+            lastAnnounceSucceeded: boolean;
+            lastAnnounceTime?: number;
+            leechers?: number;
+            seederCount?: number;
+            tier?: number;
+          }>;
+        }>;
+      }>
+    >("torrent-get", {
+      ids: [this.getTorrentId(torrent)],
+      fields: ["trackerStats"],
+    });
+
+    const trackers = args.torrents[0]?.trackerStats ?? [];
+
+    return trackers.map((tracker) => ({
+      url: tracker.announce,
+      tier: tracker.tier ?? 0,
+      status: mapTransmissionTrackerState(tracker),
+      statusMessage: tracker.lastAnnounceResult,
+      seeds: tracker.seederCount,
+      leeches: tracker.leechers,
+      downloaded: tracker.downloadCount,
+      lastAnnounce: tracker.lastAnnounceTime,
+      enabled: !tracker.isBackup,
+      raw: tracker,
+    }));
+  }
+
+  // 新增 tracker: torrent-set trackerAdd
+  override async addTorrentTracker(torrent: string | CTorrent, url: string): Promise<boolean> {
+    await this.request("torrent-set", {
+      ids: this.getTorrentId(torrent),
+      trackerAdd: [url],
+    });
+    return true;
+  }
+
+  // 删除 tracker: torrent-set trackerRemove（接受 url 或 tracker id 字符串）
+  override async removeTorrentTracker(torrent: string | CTorrent, url: string): Promise<boolean> {
+    await this.request("torrent-set", {
+      ids: this.getTorrentId(torrent),
+      trackerRemove: [url],
+    });
+    return true;
   }
 
   async request<T>(method: TransmissionRequestMethod, args: any = {}): Promise<AxiosResponse<T>> {

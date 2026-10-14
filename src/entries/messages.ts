@@ -16,7 +16,17 @@ import type {
 } from "@ptd/social";
 import type { IMediaServerId, IMediaServerSearchOptions, IMediaServerSearchResult } from "@ptd/mediaServer";
 import type { IBackupData, IBackupFileInfo } from "@ptd/backupServer";
-import type { CTorrent, TorrentClientStatus } from "@ptd/downloader";
+import type {
+  CTorrent,
+  CTorrentFile,
+  CTorrentFileSelection,
+  CTorrentPeer,
+  CTorrentTracker,
+  TorrentClientMetaData,
+  TorrentClientStatus,
+  TorrentQueueDirection,
+  TorrentSpeedLimit,
+} from "@ptd/downloader";
 
 // 可序列化的种子信息，用于辅种检测
 export interface ITorrentInfoForVerification {
@@ -92,10 +102,10 @@ interface ProtocolMap extends TMessageMap {
   getCookie(data: chrome.cookies.CookieDetails): chrome.cookies.Cookie | null;
   removeCookie(data: chrome.cookies.CookieDetails | chrome.cookies.SetDetails): chrome.cookies.CookieDetails;
   checkAndExtendCookies(url: string): void;
-  safariTabRequest(data: ISafariTabRequest): ISafariTabResponse;
 
-  // 1.6 chrome.notifications
-  showNotification(data: { options: chrome.notifications.NotificationOptions; timeout?: number }): void;
+  // （原 1.6 `showNotification` 已删除：声明之后从来没有 handler，且已无任何调用方 ——
+  //   真正要弹通知的地方直接调 chrome.notifications.create，见 background/utils/contextMenus.ts。
+  //   留着一个「声明了但没实现」的协议项，正是 §3.7(1) 那类静默 bug 的温床。）
 
   // 1.7 chrome.contextMenus
   addContextMenu(data: chrome.contextMenus.CreateProperties): string;
@@ -135,9 +145,29 @@ interface ProtocolMap extends TMessageMap {
   getTorrentInfoForVerification(torrent: ITorrent): ITorrentInfoForVerification;
 
   getClientTorrents(downloaderId: string): CTorrent[];
+  getClientTorrentTrackers(data: { downloaderId: string; torrent: CTorrent }): string[];
   deleteClientTorrent(data: { downloaderId: string; id: any; removeData?: boolean }): boolean;
   pauseClientTorrent(data: { downloaderId: string; id: any }): boolean;
   resumeClientTorrent(data: { downloaderId: string; id: any }): boolean;
+  recheckClientTorrent(data: { downloaderId: string; id: any }): boolean;
+  moveClientTorrentInQueue(data: { downloaderId: string; id: any; direction: TorrentQueueDirection }): boolean;
+  setClientTorrentSpeedLimit(data: { downloaderId: string; id: any; limits: TorrentSpeedLimit }): boolean;
+  setClientTorrentLabel(data: { downloaderId: string; id: any; label: string }): boolean;
+
+  // 下载器能力元数据（feature 声明，UI 据此渲染文件/peers/tracker 面板）
+  getDownloaderMetaData(downloaderId: string): TorrentClientMetaData | undefined;
+
+  // 文件级 / peers / tracker 管理
+  getClientTorrentFiles(data: { downloaderId: string; torrent: CTorrent }): CTorrentFile[];
+  setClientTorrentFilePriority(data: {
+    downloaderId: string;
+    torrent: CTorrent;
+    selections: CTorrentFileSelection[];
+  }): boolean;
+  getClientTorrentPeers(data: { downloaderId: string; torrent: CTorrent }): CTorrentPeer[];
+  getClientTorrentTrackersDetail(data: { downloaderId: string; torrent: CTorrent }): CTorrentTracker[];
+  addClientTorrentTracker(data: { downloaderId: string; torrent: CTorrent; url: string }): boolean;
+  removeClientTorrentTracker(data: { downloaderId: string; torrent: CTorrent; url: string }): boolean;
 
   downloadTorrent(data: IDownloadTorrentOption): IDownloadTorrentResult;
 
@@ -156,6 +186,8 @@ interface ProtocolMap extends TMessageMap {
 
   // 2.5 社交信息 ( utils/socialInformation )
   getSocialInformation(data: { site: TSupportSocialSite$1; sid: string }): ISocialInformation;
+  // 判断 URL 命中的社交站点（供 content-script 引导做轻量预筛，避免把 social 包打进引导，见 issue #1467）
+  matchSocialPage(url: string): TSupportSocialSite$1 | null;
   getSocialRecommendations(data?: {
     flush?: boolean;
     enrichment?: "all" | "none" | "visible";
@@ -169,6 +201,7 @@ interface ProtocolMap extends TMessageMap {
   exportBackupData(data: { backupServerId: string | "local"; backupFields: TBackupFields[] }): boolean;
   getBackupHistory(data: string): IBackupFileInfo[];
   deleteBackupHistory(data: { backupServerId: string; path: string }): boolean;
+  applyBackupRetention(data: { backupServerId: string; keepFilename?: string }): IBackupFileInfo[];
   restoreBackupData(data: { restoreData: IBackupData; restoreOptions?: IRestoreOptions }): boolean;
   getRemoteBackupData(data: { backupServerId: string; path: string; decryptKey?: string }): IBackupData;
 
@@ -224,8 +257,11 @@ function createMessageWrapper<PM extends ProtocolMap>(original: {
     // @ts-expect-error
     const localHandler = messageMaps[type] as PM[K] | undefined;
 
-    if (__BROWSER__ != "chrome" && typeof data !== "undefined") {
-      data = JSON.parse(JSON.stringify(data)); // 统一 background page 下深拷贝数据，避免传递 proxy 出错
+    // 深拷贝数据，避免 Vue 响应式 Proxy 或其他不可序列化对象进入消息链路引发 DataCloneError。
+    // 原实现仅对 firefox 生效，Chrome/Edge 下同样存在该问题（见 issue #1431），
+    // 故对所有浏览器统一执行深拷贝。
+    if (typeof data !== "undefined") {
+      data = JSON.parse(JSON.stringify(data));
     }
 
     if (localHandler) {
@@ -243,6 +279,6 @@ function createMessageWrapper<PM extends ProtocolMap>(original: {
 
 export const { sendMessage, onMessage } = createMessageWrapper(
   defineExtensionMessaging<ProtocolMap>({
-    logger: __BROWSER__ != "chrome" || isDebug ? console : undefined,
+    logger: __BROWSER__ == "firefox" || isDebug ? console : undefined,
   }),
 );

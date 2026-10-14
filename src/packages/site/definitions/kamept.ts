@@ -1,3 +1,8 @@
+/**
+ * @JackettDefinitions https://github.com/Jackett/Jackett/blob/master/src/Jackett.Common/Definitions/kamept.yml
+ * @PTPPDefinitions https://github.com/pt-plugins/PT-Plugin-Plus/blob/dev/resource/sites/kamept.com/config.json
+ * @PDSDefinitions https://github.com/mantou568/pre-dessert-sites/blob/main/site_config/sites/kamept.json
+ */
 import type { ISiteMetadata } from "../types";
 import {
   CategoryInclbookmarked,
@@ -16,7 +21,7 @@ export const siteMetadata: ISiteMetadata = {
   aka: ["龟站"],
   schema: "NexusPHP",
   type: "private",
-  urls: ["https://kamept.com/"],
+  urls: ["uggcf://xnzrcg.pbz/"],
   description: "主打二次元同人AV的站点",
   tags: ["成人", "COS", "动漫", "音乐", "影视"],
   collaborator: ["NekoCH"],
@@ -45,13 +50,15 @@ export const siteMetadata: ISiteMetadata = {
         { name: "画师CG", value: 433 },
         { name: "同人志", value: 435 },
         { name: "单行本", value: 424 },
-        { name: "游戏", value: 415 },
+        { name: "非中文游戏", value: 415 },
         { name: "中文游戏", value: 418 },
         { name: "游戏CG", value: 434 },
         { name: "音乐", value: 437 },
         { name: "外语音声", value: 420 },
         { name: "中文音声", value: 421 },
         { name: "视频音声", value: 422 },
+        { name: "去码同人AV", value: 438 },
+        { name: "去码男娘", value: 439 },
       ],
       cross: { mode: "append", key: "cat" },
     },

@@ -1,7 +1,7 @@
 import Sizzle from "sizzle";
 import { get, isEmpty, set } from "es-toolkit/compat";
 import { chunk, pascalCase, pick, toMerged, union } from "es-toolkit";
-import { type AxiosError, type AxiosRequestConfig, type AxiosResponse } from "axios";
+import { isAxiosError, type AxiosError, type AxiosRequestConfig, type AxiosResponse } from "axios";
 import { supportSocialSite } from "@ptd/social";
 
 // noinspection ES6PreferShortImport
@@ -15,6 +15,7 @@ import {
   NeedLoginError,
   CFBlockedError,
   NoTorrentsError,
+  NoUserInputError,
   IAdvanceKeywordSearchConfig,
   ISearchInput,
   ITorrentTag,
@@ -116,6 +117,10 @@ export default class BittorrentSite {
     return (this.userConfig.runtimeSettings?.[key] ?? (await retrieve<T>(this.metadata.id, key))) as T | null;
   }
 
+  /**
+   * 真正发出请求的方法，保留为独立方法便于子类接管
+   * （Safari 移植版需要在这里改走内容脚本中转请求）
+   */
   protected async executeRequest<T>(axiosConfig: AxiosRequestConfig): Promise<AxiosResponse<T>> {
     return await axios.request<T>(axiosConfig);
   }
@@ -138,7 +143,7 @@ export default class BittorrentSite {
         const doc = req.data;
 
         // 进行简单的检查，防止无意义的替换
-        if (doc instanceof Document && doc.documentElement.outerHTML.search("__cf_email__")) {
+        if (doc instanceof Document && doc.documentElement.outerHTML.search("__cf_email__") !== -1) {
           const cfProtectSpan = Sizzle(".__cf_email__", doc);
 
           cfProtectSpan.forEach((element) => {
@@ -149,12 +154,16 @@ export default class BittorrentSite {
         req.data = doc;
       }
     } catch (e) {
-      // 从 AxiosError 中获取 response
-      const errorResponse = (e as AxiosError).response;
-      if (!errorResponse) {
+      // ⚠️ 这里不能写成 `req = (e as AxiosError).response!`：超时 / DNS 失败 / 请求被拦截时，
+      // axios 抛出的错误里**根本没有 response**，取到 undefined 之后，下面的 `req.status`
+      // 会抛 TypeError —— 真实原因（`timeout of 30000ms exceeded` 之类）就此被顶掉，
+      // 调用方只能看到一句「解析失败」。
+      // 没有 response 就原样抛出，把真实原因交给调用方。
+      const response = (e as AxiosError).response;
+      if (!response) {
         throw e;
       }
-      req = errorResponse;
+      req = response;
     }
 
     if (isCloudflareBlocked(req)) {
@@ -163,53 +172,12 @@ export default class BittorrentSite {
 
     // 随后检查是否需要登录
     if (checkLogin && !this.loggedCheck(req!)) {
-      const responseUrl = (req.request as XMLHttpRequest | undefined)?.responseURL;
-      let responseLocation = responseUrl;
-      try {
-        if (responseUrl) {
-          const parsedUrl = new URL(responseUrl);
-          responseLocation = `${parsedUrl.origin}${parsedUrl.pathname}`;
-        }
-      } catch {
-        // Keep the original value when the adapter does not provide an absolute URL.
-      }
-
-      const safariCookieCount = (
-        req.config as AxiosRequestConfig & {
-          ptdSafariCookieCount?: number;
-          ptdSafariCookieSource?: string;
-        }
-      ).ptdSafariCookieCount;
-      const safariCookieSource = (
-        req.config as AxiosRequestConfig & {
-          ptdSafariCookieSource?: string;
-        }
-      ).ptdSafariCookieSource;
-      const details = [
-        `HTTP ${req.status}`,
-        responseLocation ? `final URL ${responseLocation}` : undefined,
-        typeof safariCookieCount === "number"
-          ? `Safari cookies ${safariCookieCount}${safariCookieSource ? ` (${safariCookieSource})` : ""}`
-          : undefined,
-      ].filter(Boolean);
-      throw new NeedLoginError(`Login check failed (${details.join(", ")})`);
+      throw new NeedLoginError();
     }
 
     // 如果非需要登录的情况，但还是返回了 4xx 或者 5xx ，则抛出错误
     if (req.status >= 400) {
-      const responseUrl = (req.request as XMLHttpRequest | undefined)?.responseURL;
-      let responseLocation = responseUrl;
-      try {
-        if (responseUrl) {
-          const parsedUrl = new URL(responseUrl);
-          responseLocation = `${parsedUrl.origin}${parsedUrl.pathname}`;
-        }
-      } catch {
-        // Keep the adapter-provided value when it is not an absolute URL.
-      }
-      throw Error(
-        `Network Error: ${req.status} ${req.statusText || ""}${responseLocation ? ` (${responseLocation})` : ""}`.trim(),
-      );
+      throw Error(`Network Error: ${req.status} ${req.statusText || ""}`.trim());
     }
 
     return req;
@@ -354,8 +322,14 @@ export default class BittorrentSite {
         result.status = EResultParseStatus.CFBlocked;
       } else if (e instanceof NeedLoginError) {
         result.status = EResultParseStatus.needLogin;
+      } else if (e instanceof NoUserInputError) {
+        result.status = EResultParseStatus.noUserInput;
       } else if (e instanceof NoTorrentsError) {
         result.status = EResultParseStatus.noResults;
+      } else if (isAxiosError(e) && !e.response) {
+        // 网络层失败（超时 / DNS / 请求被拦截）：给界面一句「哪一类失败」，
+        // 否则 statusMsg 永远空着，用户只能看到「解析错误」。
+        result.statusMsg = "i18n.networkError";
       }
     }
     return result;
@@ -726,7 +700,7 @@ export default class BittorrentSite {
       retData.keywords = this.getFieldData(doc, {
         selector: [
           keywordField === "params" ? `input[name="${keywordParams}"]` : false,
-          keywordField === "data" ? `form[method="post" i] input[name="${keywordField}"]` : false,
+          keywordField === "data" ? `form[method="post" i] input[name="${keywordParams}"]` : false,
         ].filter(Boolean) as string[],
         elementProcess: (el: HTMLInputElement) => el.value,
         text: "",

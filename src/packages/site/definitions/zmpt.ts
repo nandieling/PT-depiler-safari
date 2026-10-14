@@ -1,3 +1,9 @@
+/**
+ * @JackettDefinitions https://github.com/Jackett/Jackett/blob/master/src/Jackett.Common/Definitions/zmpt.yml
+ * @PTPPDefinitions https://github.com/pt-plugins/PT-Plugin-Plus/blob/dev/resource/sites/zmpt.cc/config.json
+ * @PDSDefinitions https://github.com/mantou568/pre-dessert-sites/blob/main/site_config/sites/zmpt.json
+ * @PTMDefinitions https://github.com/JustLookAtNow/pt_mate/blob/master/assets/sites/zmpt.json
+ */
 import { type ISiteMetadata } from "../types";
 import { CategoryInclbookmarked, CategoryIncldead, CategorySpstate, SchemaMetadata } from "../schemas/NexusPHP.ts";
 
@@ -33,6 +39,7 @@ export const siteMetadata: ISiteMetadata = {
         { name: "音乐 / Music", value: 423 },
         { name: "有声书 / Audiobook", value: 424 },
         { name: "软件 / Software", value: 425 },
+        { name: "游戏 / Games", value: 426 },
       ],
       cross: { mode: "append" },
     },
@@ -91,8 +98,10 @@ export const siteMetadata: ISiteMetadata = {
         { name: "ZmWeb", value: 7 },
         { name: "ZmPT", value: 6 },
         { name: "ZmMusic", value: 8 },
+        { name: "ZmAudio", value: 11 },
         { name: "DYZ-Movie", value: 9 },
         { name: "GodDramas", value: 10 },
+        { name: "RL/RL4B", value: 12 },
       ],
       cross: { mode: "append" },
     },
@@ -101,7 +110,7 @@ export const siteMetadata: ISiteMetadata = {
     CategoryInclbookmarked,
   ],
 
-  officialGroupPattern: ["ZmWeb", "ZmPT"],
+  officialGroupPattern: ["ZmWeb", "ZmPT", "ZmMusic", "ZmAudio"],
 
   userInfo: {
     ...SchemaMetadata.userInfo!,

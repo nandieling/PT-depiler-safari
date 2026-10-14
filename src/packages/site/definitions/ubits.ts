@@ -1,7 +1,19 @@
+/**
+ * @JackettDefinitions https://github.com/Jackett/Jackett/blob/master/src/Jackett.Common/Definitions/ubits.yml
+ * @PTPPDefinitions https://github.com/pt-plugins/PT-Plugin-Plus/blob/dev/resource/sites/ubits.club/config.json
+ * @PDSDefinitions https://github.com/mantou568/pre-dessert-sites/blob/main/site_config/sites/ubits.json
+ * @PTMDefinitions https://github.com/JustLookAtNow/pt_mate/blob/master/assets/sites/ubits.json
+ */
 import { set } from "es-toolkit/compat";
 import type { IAdvancedSearchRequestConfig, ISiteMetadata, TSelectSearchCategoryValue } from "../types";
 import { GB, TB } from "../utils";
-import { CategoryIncldead, CategorySpstate, CategoryInclbookmarked, SchemaMetadata, createUserBonusSelectorFn } from "../schemas/NexusPHP";
+import {
+  CategoryIncldead,
+  CategorySpstate,
+  CategoryInclbookmarked,
+  SchemaMetadata,
+  createUserBonusSelectorFn,
+} from "../schemas/NexusPHP";
 
 export const siteMetadata: ISiteMetadata = {
   ...SchemaMetadata,
@@ -32,6 +44,7 @@ export const siteMetadata: ISiteMetadata = {
         { value: 406, name: "Music(音乐)" },
         { value: 407, name: "Sports(体育)" },
         { value: 409, name: "MV(音乐视频)" },
+        { value: 415, name: "有声书" },
         { value: 408, name: "Others(其他)" },
       ],
       cross: { mode: "append" },
@@ -48,8 +61,8 @@ export const siteMetadata: ISiteMetadata = {
         { value: 6, name: "Korea(韩国)" },
         { value: 7, name: "Thailand(泰国)" },
         { value: 8, name: "India(印度)" },
-        { value: 8, name: "Russia(俄罗斯)" },
-        { value: 99, name: "Other(其他地区)" },
+        { value: 9, name: "Russia(俄罗斯)" },
+        { value: 11, name: "Other(其他地区)" },
       ],
       cross: { mode: "append" },
     },
@@ -128,6 +141,7 @@ export const siteMetadata: ISiteMetadata = {
         { value: 1, name: "UBits" },
         { value: 6, name: "UBWEB" },
         { value: 7, name: "UBTV" },
+        { value: 8, name: "驻站" },
         { value: 5, name: "Other" },
       ],
       cross: { mode: "append" },
@@ -140,11 +154,11 @@ export const siteMetadata: ISiteMetadata = {
         { value: "17", name: "原生原盘" },
         { value: "3", name: "官方" },
         { value: "4", name: "DIY" },
-        { value: "5", name: "国配" },
+        { value: "5", name: "国语" },
         { value: "11", name: "粤语" },
         { value: "6", name: "中字" },
         { value: "21", name: "高分国剧" },
-        { value: "12", name: "特效" },
+        { value: "12", name: "特效字幕" },
         { value: "8", name: "杜比视界" },
         { value: "10", name: "HDR10+" },
         { value: "18", name: "菁彩HDR" },
@@ -152,6 +166,7 @@ export const siteMetadata: ISiteMetadata = {
         { value: "23", name: "连载" },
         { value: "20", name: "合集" },
         { value: "19", name: "HLG" },
+        { value: "24", name: "驻站" },
         { value: "22", name: "自购" },
         { value: "14", name: "菜单修改" },
         { value: "13", name: "零魔力" },
@@ -169,8 +184,22 @@ export const siteMetadata: ISiteMetadata = {
     CategorySpstate,
     CategoryInclbookmarked,
     {
-      name: "审核状态：",
-      key: "audit",
+      name: "种子状态",
+      key: "torrentstatus",
+      options: [
+        { value: 0, name: "全部种子" },
+        { value: 1, name: "发布种子" },
+        { value: 2, name: "当前做种" },
+        { value: 3, name: "当前下载" },
+        { value: 4, name: "完成种子" },
+        { value: 5, name: "未完成种子" },
+        { value: 6, name: "未下载种子" },
+      ],
+      cross: false,
+    },
+    {
+      name: "审核状态",
+      key: "approval_status",
       options: [
         { value: "", name: "全部" },
         { value: 0, name: "未审" },

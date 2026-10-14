@@ -1,3 +1,7 @@
+/**
+ * @JackettDefinitions https://github.com/Jackett/Jackett/blob/master/src/Jackett.Common/Indexers/Definitions/SpeedApp.cs
+ * @PTPPDefinitions https://github.com/pt-plugins/PT-Plugin-Plus/blob/dev/resource/sites/speedapp.io/config.json
+ */
 import type {
   ISiteMetadata,
   ISearchEntryRequestConfig,
@@ -86,7 +90,7 @@ export const siteMetadata: ISiteMetadata = {
 
   urls: ["uggcf://fcrrqncc.vb/"],
 
-  legacyUrls: ["https://icetorrent.org/", "https://scenefz.me/", "https://u-torrents.ro/", "https://myxz.eu/"],
+  legacyUrls: ["uggcf://vprgbeerag.bet/", "uggcf://fprarsm.zr/", "uggcf://h-gbeeragf.eb/", "uggcf://zlkm.rh/"],
 
   // 这里除了 categories 其它均为自定义 key，需要在自定义站点方法中统一处理
   category: [
@@ -389,7 +393,7 @@ export const siteMetadata: ISiteMetadata = {
           responseType: "document",
         },
         selectors: {
-          name: { selector: "#kt_quick_user_toggle > span.text-dark-50" },
+          name: { selector: "#kt_profile_aside a[href*='/profile/']" },
           messageCount: { selector: "#notifications-oc-toggle > div.btn > .label-danger" },
           // 上传权限需要申请
           uploads: {

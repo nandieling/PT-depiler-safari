@@ -1,3 +1,8 @@
+/**
+ * @JackettDefinitions https://github.com/Jackett/Jackett/blob/master/src/Jackett.Common/Definitions/cinematik.yml
+ * @PTPPDefinitions https://github.com/pt-plugins/PT-Plugin-Plus/blob/dev/resource/sites/cinematik.net/config.json
+ * @PDSDefinitions https://github.com/mantou568/pre-dessert-sites/blob/main/site_config/sites/cinematik.json
+ */
 import { type ISiteMetadata } from "../types";
 import { CategoryFree, SchemaMetadata } from "../schemas/Unit3D.ts";
 
@@ -91,7 +96,7 @@ export const siteMetadata: ISiteMetadata = {
         { name: "TV", value: 2 },
         { name: "Foreign Film", value: 3 },
         { name: "Foreign TV", value: 4 },
-        { name: "Opera &amp; Musical", value: 5 },
+        { name: "Opera & Musical", value: 5 },
         { name: "Asian Film", value: 6 },
       ],
       cross: { mode: "brackets" },

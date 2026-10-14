@@ -1,3 +1,8 @@
+/**
+ * @JackettDefinitions https://github.com/Jackett/Jackett/blob/master/src/Jackett.Common/Indexers/Definitions/DICMusic.cs
+ * @PTPPDefinitions https://github.com/pt-plugins/PT-Plugin-Plus/blob/dev/resource/sites/dicmusic.com/config.json
+ * @PTMDefinitions https://github.com/JustLookAtNow/pt_mate/blob/master/assets/sites/dicmusic.json
+ */
 import { buildCategoryOptionsFromList } from "../utils";
 import { type IUserInfo, type ITorrent, type ISiteMetadata } from "../types";
 import GazelleJSONAPI, {
@@ -43,6 +48,9 @@ export const siteMetadata: ISiteMetadata = {
         "APS (VBR)",
         "V2 (VBR)",
         "V1 (VBR)",
+        "256",
+        "APX (VBR)",
+        "V0 (VBR)",
         "q8.x (VBR)",
         "320",
         "Lossless",
@@ -60,6 +68,7 @@ export const siteMetadata: ISiteMetadata = {
         "DSD",
         "MP3",
         "AAC",
+        "AC3",
         "DTS",
         "Lossless",
         "24bit Lossless",
@@ -92,10 +101,16 @@ export const siteMetadata: ISiteMetadata = {
         { value: "3", name: "原声" },
         { value: "5", name: "EP" },
         { value: "6", name: "精选" },
-        { value: "7", name: "集锦" },
+        { value: "7", name: "合辑" },
         { value: "9", name: "单曲专辑" },
-        { value: "11", name: "重混音" },
+        { value: "11", name: "现场专辑" },
         { value: "13", name: "重混音" },
+        { value: "14", name: "私录专辑" },
+        { value: "15", name: "访谈" },
+        { value: "16", name: "私制合辑" },
+        { value: "17", name: "录音样带" },
+        { value: "18", name: "音乐会录音" },
+        { value: "19", name: "DJ 混音" },
         { value: "21", name: "未知" },
       ],
       cross: false,

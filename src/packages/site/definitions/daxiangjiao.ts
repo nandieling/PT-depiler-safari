@@ -1,3 +1,7 @@
+/**
+ * @JackettDefinitions https://github.com/Jackett/Jackett/blob/master/src/Jackett.Common/Definitions/daxiangjiao.yml
+ * @PDSDefinitions https://github.com/mantou568/pre-dessert-sites/blob/main/site_config/sites/daxiangjiao.json
+ */
 import type { ISiteMetadata } from "../types";
 import {
   CategoryInclbookmarked,
@@ -13,7 +17,7 @@ export const siteMetadata: ISiteMetadata = {
   version: 1,
   id: "daxiangjiao",
   name: "DaXiangJiao",
-  aka: ["大象蕉"],
+  aka: ["大象蕉", "大香蕉"],
   description: "DaXiangJiao 私有资源分享站",
   tags: ["影视", "综合", "成人"],
   timezoneOffset: "+0800",

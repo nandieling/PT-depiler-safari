@@ -1,3 +1,7 @@
+/**
+ * @JackettDefinitions https://github.com/Jackett/Jackett/blob/master/src/Jackett.Common/Definitions/zrpt.yml
+ * @PDSDefinitions https://github.com/mantou568/pre-dessert-sites/blob/main/site_config/sites/zrpt.json
+ */
 import type { ISiteMetadata, ITorrentTag } from "../types";
 import { CategoryInclbookmarked, CategoryIncldead, CategorySpstate, SchemaMetadata } from "../schemas/NexusPHP";
 
@@ -14,7 +18,10 @@ export const siteMetadata: ISiteMetadata = {
   type: "private",
   schema: "NexusPHP",
 
-  urls: ["https://zrpt.cc/"],
+  // 原域名 zrpt.cc 已无法连接，站点迁至 naturept.top（savept.icu 卡片标题仍为 "ZRPT - 自然"）
+  // refs: https://savept.icu/
+  urls: ["https://naturept.top/"],
+  legacyUrls: ["https://zrpt.cc/"],
 
   category: [
     {

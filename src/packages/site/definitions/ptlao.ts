@@ -1,3 +1,6 @@
+/**
+ * @JackettDefinitions https://github.com/Jackett/Jackett/blob/master/src/Jackett.Common/Definitions/ptlao.yml
+ */
 import { type ISiteMetadata } from "../types";
 import { SchemaMetadata } from "../schemas/NexusPHP";
 
@@ -7,6 +10,7 @@ export const siteMetadata: ISiteMetadata = {
 
   id: "ptlao",
   name: "PTLAO",
+  aka: ["忘年桥"],
   tags: ["成人", "综合"],
   timezoneOffset: "+0800",
 

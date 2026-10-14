@@ -1,8 +1,9 @@
 /**
  * @JackettDefinitions https://github.com/Jackett/Jackett/blob/master/src/Jackett.Common/Definitions/chdbits.yml
+ * @PTPPDefinitions https://github.com/pt-plugins/PT-Plugin-Plus/blob/dev/resource/sites/chdbits.co/config.json
  */
 import { ETorrentStatus, type ISiteMetadata } from "../types";
-import { SchemaMetadata } from "../schemas/NexusPHP";
+import { CategoryInclbookmarked, CategoryIncldead, CategorySpstate, SchemaMetadata } from "../schemas/NexusPHP";
 
 export const siteMetadata: ISiteMetadata = {
   ...SchemaMetadata,
@@ -145,6 +146,9 @@ export const siteMetadata: ISiteMetadata = {
         { value: 25, name: "Destiny" },
       ],
     },
+    CategoryIncldead,
+    CategorySpstate,
+    CategoryInclbookmarked,
   ],
 
   officialGroupPattern: [/-(CHD|.*@CHDBits)|@CHDWEB/i],

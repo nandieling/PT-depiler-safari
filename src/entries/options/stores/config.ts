@@ -15,6 +15,8 @@ const deprecatedConfigKeys = [
 ];
 
 export const defaultTimelineBackgroundColor = "#455A64";
+export const defaultTimelineUserNameColor = "#FFFFFF";
+export const defaultTimelineTextColor = "#FFFFFF";
 
 export const useConfigStore = defineStore("config", {
   persistWebExt: {
@@ -60,12 +62,15 @@ export const useConfigStore = defineStore("config", {
     lang: "zh_CN",
     theme: "light",
     isNavBarOpen: true,
+    autoToggleNavBarOnDisplayChange: true,
 
     ignoreWrongPixelRatio: false,
     showReleaseNoteOnVersionChange: true,
 
     saveTableBehavior: true,
     enableTableMultiSort: false,
+    tableActionColumnPosition: "end",
+    tableActionColumnFixed: false,
 
     contextMenus: {
       enabled: true,
@@ -144,6 +149,7 @@ export const useConfigStore = defineStore("config", {
         columns: [
           "clientId",
           "name",
+          "site",
           "totalSize",
           "progress",
           "state",
@@ -206,6 +212,8 @@ export const useConfigStore = defineStore("config", {
       showTop: true,
       showTimeline: true,
       backgroundColor: defaultTimelineBackgroundColor,
+      userNameColor: defaultTimelineUserNameColor,
+      textColor: defaultTimelineTextColor,
       dateFormat: "time_added",
       faviconBlue: 3,
       selectedSites: [],
@@ -240,7 +248,8 @@ export const useConfigStore = defineStore("config", {
       showSocialInformation: true,
       socialInformationSearchOnNewTab: true,
       uploadAtFormatAsAlive: false,
-      limitTorrentTitleTdWidth: false,
+      limitTorrentTitleTdWidth: true,
+      highlightSameSizeTorrent: false,
       maxTagCountBeforeGroup: 0,
       hiddenTagNames: [],
     },

@@ -11,6 +11,7 @@ import { useConfigStore } from "@/options/stores/config.ts";
 import { useRuntimeStore } from "@/options/stores/runtime.ts";
 import { useMetadataStore } from "@/options/stores/metadata.ts";
 import { useTableCustomFilter } from "@/options/directives/useAdvanceFilter.ts";
+import { useTableActionColumn } from "@/options/directives/useTableActionColumn.ts";
 import { formatDate, formatSize, formatTimeAgo } from "@/options/utils.ts";
 
 import SiteName from "@/options/components/SiteName.vue";
@@ -62,10 +63,12 @@ const fullTableHeader = reactive([
 ] as TExtendDataTableHeader[]);
 
 const tableHeader = computed(() => {
-  return fullTableHeader.filter(
-    (item: TExtendDataTableHeader) =>
-      item?.props?.disabled || configStore.tableBehavior.MyData.columns!.includes(item.key!),
-  ) as DataTableHeader[];
+  return useTableActionColumn(
+    fullTableHeader.filter(
+      (item: TExtendDataTableHeader) =>
+        item?.props?.disabled || configStore.tableBehavior.MyData.columns!.includes(item.key!),
+    ) as DataTableHeader[],
+  );
 });
 
 const tableNonBooleanControlKey = [
@@ -106,6 +109,16 @@ const {
 });
 
 const tableSelected = ref<TSiteID[]>([]); // 选中的站点行
+
+// 最近一次更新失败的站点状态，用于快速筛选
+// NOTE: 不要在模板的事件回调中直接访问导入枚举的成员：vue-tsc 3.3.12 起会为这类窄化访问生成 `.value`，
+//       而闭包内无法通过类型检查（TS2339），故提前在 script 中展开（见 #1601）
+const lastUpdateErrorStatuses = [
+  EResultParseStatus.parseError,
+  EResultParseStatus.unknownError,
+  EResultParseStatus.needLogin,
+  EResultParseStatus.noUserInput,
+].map((item) => item.toString());
 
 // 存储恢复是异步的；Safari 上页面启动较快时，直接读取会得到空站点列表。
 onMounted(async () => {
@@ -206,7 +219,7 @@ const showExportDialog = ref(false);
   <v-alert :title="t('route.Overview.MyData')" type="info" />
   <v-card>
     <v-card-title>
-      <v-row class="ma-0">
+      <v-row gap="0" class="ma-0">
         <!-- 刷新，取消刷新 -->
         <NavButton
           v-if="runtimeStore.isUserInfoFlush"
@@ -254,7 +267,7 @@ const showExportDialog = ref(false);
 
         <v-divider class="mx-2" vertical />
 
-        <v-menu :close-on-content-clicks="false">
+        <v-menu :close-on-content-click="false">
           <template v-slot:activator="{ props }">
             <NavButton color="blue" icon="mdi-cog" :text="t('MyData.index.setting')" class="mr-1" v-bind="props" />
           </template>
@@ -264,14 +277,13 @@ const showExportDialog = ref(false);
               <template v-slot:prepend>
                 <v-list-item-action start class="ml-2">
                   <v-icon icon="mdi-calendar-account" class="mr-2" />
-                  <span class="text-subtitle-2">{{ t("MyData.index.joinTimeFormat") }}</span>
+                  <span class="text-label-large">{{ t("MyData.index.joinTimeFormat") }}</span>
                 </v-list-item-action>
               </template>
 
               <v-btn-toggle
                 v-model="configStore.myDataTableControl.joinTimeFormat"
                 density="compact"
-                hide-details
                 class="ml-2"
                 @click.stop
                 @update:model-value="() => configStore.$save()"
@@ -282,7 +294,6 @@ const showExportDialog = ref(false);
                   :value="type"
                   :title="t(`MyData.index.joinTimeFormatOptions.${type}`)"
                   density="compact"
-                  hide-details
                 >
                   {{ t(`MyData.index.joinTimeFormatOptions.${type}`) }}
                 </v-btn>
@@ -328,7 +339,7 @@ const showExportDialog = ref(false);
             <v-chip v-if="index === 0">
               <span>{{ item.title }}</span>
             </v-chip>
-            <span v-if="index === 1" class="text-grey caption">
+            <span v-if="index === 1" class="text-grey text-body-small">
               (+{{ configStore.tableBehavior.MyData.columns!.length - 1 }})
             </span>
           </template>
@@ -350,7 +361,7 @@ const showExportDialog = ref(false);
           <template #prepend-inner>
             <v-menu min-width="100">
               <template v-slot:activator="{ props }">
-                <v-icon v-bind="props" icon="mdi-filter" variant="plain" />
+                <v-icon v-bind="props" icon="mdi-filter" />
               </template>
               <v-list class="pa-0">
                 <v-list-item-subtitle class="ma-2">
@@ -371,11 +382,7 @@ const showExportDialog = ref(false);
                   :title="t('MyData.index.filter.lastUpdateError')"
                   @click.stop="
                     () => {
-                      advanceFilterDictRef.status.required = [
-                        EResultParseStatus.parseError,
-                        EResultParseStatus.unknownError,
-                        EResultParseStatus.needLogin,
-                      ].map((item) => item.toString());
+                      advanceFilterDictRef.status.required = lastUpdateErrorStatuses;
                       updateTableFilterValueFn();
                     }
                   "
@@ -477,14 +484,14 @@ const showExportDialog = ref(false);
 
       <!-- 上传、下载 -->
       <template #item.uploaded="{ item }">
-        <v-container>
-          <v-row class="flex-nowrap" justify="end">
+        <v-container class="py-0 pr-0">
+          <v-row gap="0" class="justify-end flex-nowrap">
             <span class="text-no-wrap">
               {{ typeof item.uploaded !== "undefined" ? formatSize(item.uploaded) : "-" }}
             </span>
             <v-icon color="green-darken-4" icon="mdi-chevron-up" size="small"></v-icon>
           </v-row>
-          <v-row class="flex-nowrap" justify="end">
+          <v-row gap="0" class="justify-end flex-nowrap">
             <span class="text-no-wrap">
               {{ typeof item.downloaded !== "undefined" ? formatSize(item.downloaded) : "-" }}
             </span>
@@ -495,14 +502,14 @@ const showExportDialog = ref(false);
 
       <!-- 真实上传、下载 -->
       <template #item.trueUploaded="{ item }">
-        <v-container>
-          <v-row class="flex-nowrap" justify="end">
+        <v-container class="py-0 pr-0">
+          <v-row gap="0" class="justify-end flex-nowrap">
             <span class="text-no-wrap">
               {{ typeof item.trueUploaded !== "undefined" ? formatSize(item.trueUploaded) : "-" }}
             </span>
             <v-icon color="green-darken-4" icon="mdi-chevron-up" size="small"></v-icon>
           </v-row>
-          <v-row class="flex-nowrap" justify="end">
+          <v-row gap="0" class="justify-end flex-nowrap">
             <span class="text-no-wrap">
               {{ typeof item.trueDownloaded !== "undefined" ? formatSize(item.trueDownloaded) : "-" }}
             </span>
@@ -528,11 +535,15 @@ const showExportDialog = ref(false);
 
       <!-- 做种数， H&R 情况  -->
       <template #item.seeding="{ item }">
-        <v-container class="py-0">
-          <v-row align="center" class="flex-nowrap my-0" justify="end">
+        <v-container class="py-0 pr-0">
+          <v-row gap="0" class="align-center justify-end flex-nowrap my-0">
             <span class="text-no-wrap">{{ item.seeding ?? "-" }}</span>
           </v-row>
-          <v-row v-if="configStore.myDataTableControl.showHnR" align="center" class="flex-nowrap my-0" justify="end">
+          <v-row
+            gap="0"
+            v-if="configStore.myDataTableControl.showHnR"
+            class="align-center justify-end flex-nowrap my-0"
+          >
             <span
               v-if="typeof item.hnrPreWarning !== 'undefined' && item.hnrPreWarning > 0"
               class="d-inline-flex align-center ml-2"
@@ -574,12 +585,13 @@ const showExportDialog = ref(false);
 
       <!-- 魔力/积分 -->
       <template #item.bonus="{ item }">
-        <v-container>
-          <v-row align="center" class="flex-nowrap" justify="end">
+        <v-container class="py-0 pr-0">
+          <v-row gap="0" class="align-center justify-end flex-nowrap">
             <v-icon :title="t('levelRequirement.bonus')" color="green-darken-4" icon="mdi-currency-usd" size="small" />
             <BonusFormatSpan :num="item.bonus" />
           </v-row>
           <v-row
+            gap="0"
             v-if="
               configStore.myDataTableControl.showSeedingBonus &&
               item.seedingBonus !== '' &&

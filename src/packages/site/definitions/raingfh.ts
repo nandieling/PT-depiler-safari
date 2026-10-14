@@ -1,5 +1,6 @@
 /**
  * FIXME 由 resource/sites/raingfh.top/config.json 自动转换而来
+ * @PDSDefinitions https://github.com/mantou568/pre-dessert-sites/blob/main/site_config/sites/raingfh.json
  */
 import { type ISiteMetadata } from "../types";
 import { CategoryInclbookmarked, CategoryIncldead, CategorySpstate, SchemaMetadata } from "../schemas/NexusPHP";
@@ -18,6 +19,9 @@ export const siteMetadata: ISiteMetadata = {
   schema: "NexusPHP",
 
   urls: ["https://raingfh.top/"],
+
+  // dead at 2026-06-29 ( from savept.icu
+  isDead: true,
 
   category: [
     {

@@ -6,8 +6,9 @@ import { vuetifyInstance as vuetify } from "./plugins/vuetify";
 import { piniaInstance as pinia } from "./plugins/pinia";
 import { routerInstance as router } from "./plugins/router";
 import { i18nInstance as i18n } from "./plugins/i18n";
-import VueKonva from "vue-konva";
 
+// vue-konva 不在此处全局注册：那会把整个 konva（约 187KB）打进 options 入口 chunk。
+// 目前只有 UserDataTimeline 用到，改为在该组件内按需注册，让 konva 随它的路由 chunk 懒加载。
 async function bootstrap() {
   // Safari MV3 does not reliably keep the Firefox-style background page alive.
   // Register the DOM-dependent handlers in the options page so site import,
@@ -16,7 +17,7 @@ async function bootstrap() {
     await import("./safariRuntime.ts");
   }
 
-  createApp(App).use(pinia).use(i18n).use(router).use(vuetify).use(VueKonva, { prefix: "Vk" }).mount("#app");
+  createApp(App).use(pinia).use(i18n).use(router).use(vuetify).mount("#app");
 }
 
 bootstrap().catch((error) => console.error("Failed to start PT-Depiler options page", error));

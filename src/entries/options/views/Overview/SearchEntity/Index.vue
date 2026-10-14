@@ -8,6 +8,7 @@ import { EResultParseStatus, ETorrentStatus } from "@ptd/site";
 import { useMetadataStore } from "@/options/stores/metadata.ts";
 import { useConfigStore } from "@/options/stores/config.ts";
 import { useRuntimeStore } from "@/options/stores/runtime.ts";
+import { useTableActionColumn } from "@/options/directives/useTableActionColumn.ts";
 import { formatDate, formatSize, formatTimeAgo } from "@/options/utils.ts";
 import type { ISearchResultTorrent } from "@/shared/types.ts";
 
@@ -69,9 +70,11 @@ const fullTableHeader = computed(
 );
 
 const tableHeader = computed(() => {
-  return fullTableHeader.value.filter(
-    (item) => item?.props?.disabled || configStore.tableBehavior.SearchEntity.columns!.includes(item.key!),
-  ) as DataTableHeader[];
+  return useTableActionColumn(
+    fullTableHeader.value.filter(
+      (item) => item?.props?.disabled || configStore.tableBehavior.SearchEntity.columns!.includes(item.key!),
+    ) as DataTableHeader[],
+  );
 });
 
 const { tableFilterRef, tableWaitFilterRef, tableFilterFn, buildAdvanceItemPropsFn, buildFilterDictFn } =
@@ -156,6 +159,48 @@ const hiddenTagNamesText = computed({
       .filter(Boolean);
   },
 });
+
+// 相同大小种子分组色条（ #1411 ），len 为 8，按 size 升序循环，保证相邻分组不同色
+const sizeGroupPalette = ["#F44336", "#2196F3", "#4CAF50", "#FF9800", "#9C27B0", "#00BCD4", "#8BC34A", "#795548"];
+
+// sizeKey 以表格中实际展示的大小文本为准：web 解析出的 1.02 GiB 与 API 给出的 bytes 只要展示一致就会同组
+const getSizeKey = (size?: number) => (size ? String(formatSize(size)) : "");
+
+const sizeGroupColors = computed(() => {
+  const colors = new Map<string, string>();
+  const sortBy = configStore.tableBehavior.SearchEntity.sortBy;
+
+  // 仅在开启开关且当前按大小排序时生效
+  if (!configStore.searchEntifyControl.highlightSameSizeTorrent || !sortBy?.some((item) => item.key === "size")) {
+    return colors;
+  }
+
+  const groups = new Map<string, { size: number; count: number }>();
+  for (const item of runtimeStore.search.searchResult) {
+    if (!item.size) continue;
+    const key = getSizeKey(item.size);
+    const group = groups.get(key);
+    if (group) {
+      group.count++;
+    } else {
+      groups.set(key, { size: item.size, count: 1 });
+    }
+  }
+
+  // 按 size 升序编号（仅在 count > 1 时才画出色条）
+  [...groups.entries()]
+    .sort(([, a], [, b]) => a.size - b.size)
+    .forEach(([key, { count }], index) => {
+      if (count > 1) colors.set(key, sizeGroupPalette[index % sizeGroupPalette.length]!);
+    });
+
+  return colors;
+});
+
+function sizeGroupRowProps({ item }: { item: ISearchResultTorrent }) {
+  const color = sizeGroupColors.value.get(getSizeKey(item.size));
+  return color ? { style: { "--ptd-size-group-color": color } } : {};
+}
 </script>
 
 <template>
@@ -221,8 +266,9 @@ const hiddenTagNamesText = computed({
   </v-alert>
   <v-card>
     <v-card-title>
-      <v-row class="ma-0">
-        <v-btn-group size="small" variant="text">
+      <v-row gap="0" class="ma-0">
+        <!-- 不指定 size：Vuetify 4 下图标按钮为 (--v-btn-height + 12px) 的正方形（48 × 48），与 ActionTd 保持一致 -->
+        <v-btn-group variant="text">
           <!-- 启动/暂停 搜索队列 -->
           <v-btn
             v-show="isSearchingParsed"
@@ -285,7 +331,7 @@ const hiddenTagNamesText = computed({
 
         <v-menu :close-on-content-click="false">
           <template v-slot:activator="{ props }">
-            <v-btn-group size="small" variant="text">
+            <v-btn-group variant="text">
               <v-btn
                 :title="t('SearchEntity.index.action.displayPreferences')"
                 color="blue"
@@ -340,7 +386,7 @@ const hiddenTagNamesText = computed({
             <v-chip v-if="index === 0">
               <span>{{ item.title }}</span>
             </v-chip>
-            <span v-if="index === 1" class="grey--text caption">
+            <span v-if="index === 1" class="text-grey text-body-small">
               (+{{ configStore.tableBehavior.SearchEntity.columns!.length - 1 }})
             </span>
           </template>
@@ -381,6 +427,7 @@ const hiddenTagNamesText = computed({
         hover
         item-value="uniqueId"
         :multi-sort="configStore.enableTableMultiSort"
+        :row-props="sizeGroupRowProps"
         show-select
         return-object
         @update:itemsPerPage="(v) => configStore.updateTableBehavior('SearchEntity', 'itemsPerPage', v)"
@@ -401,13 +448,14 @@ const hiddenTagNamesText = computed({
 
         <!-- 种子大小，下载情况 -->
         <template #item.size="{ item }">
-          <v-container no-gutters>
-            <v-row>
+          <!-- Vuetify 4 的 v-container 已无 no-gutters 属性，v-row 间距也改用 flex gap，故用 pa-0 + gap="0" 还原紧凑布局 -->
+          <v-container class="pa-0">
+            <v-row gap="0">
               <v-col class="pa-0">
                 <span class="t_size text-no-wrap">{{ formatSize(item.size ?? 0) }}</span>
               </v-col>
             </v-row>
-            <v-row v-if="item.status && (item.status as ETorrentStatus) !== ETorrentStatus.unknown">
+            <v-row v-if="item.status && (item.status as ETorrentStatus) !== ETorrentStatus.unknown" gap="0">
               <v-col class="pa-0">
                 <TorrentProcessTd :torrent="item"></TorrentProcessTd>
               </v-col>
@@ -465,6 +513,22 @@ const hiddenTagNamesText = computed({
 #ptd-search-entity-table {
   :deep(td.v-data-table__td) {
     padding: 0 8px;
+  }
+
+  /* 相同大小种子的分组色条（ #1411 ），颜色由 row-props 写入的 --ptd-size-group-color 提供 */
+  :deep(td.v-data-table__td--select-row) {
+    position: relative;
+
+    &::before {
+      content: "";
+      position: absolute;
+      top: 4px;
+      bottom: 4px;
+      left: 1px;
+      width: 3px;
+      border-radius: 2px;
+      background-color: var(--ptd-size-group-color, transparent);
+    }
   }
 }
 </style>

@@ -54,6 +54,11 @@ export async function doSearch(option: { searchKey?: string; loadMore?: boolean 
   for (const mediaServerId of searchMediaServerIds.value) {
     // noinspection ES6MissingAwait
     searchQueue.add(async () => {
+      // 请求真正发出前再校验一次：排队期间筛选可能已经变化，只向当前筛选出的服务器发送请求（#1599）
+      if (!searchMediaServerIds.value.includes(mediaServerId)) {
+        return;
+      }
+
       let searchOptions: IMediaServerSearchOptions = { limit: configStore.mediaServerEntity.searchLimit ?? 50 };
       if (loadMore) {
         searchOptions = runtimeStore.mediaServerSearch.searchStatus[mediaServerId]?.options ?? {};
@@ -73,9 +78,16 @@ export async function doSearch(option: { searchKey?: string; loadMore?: boolean 
 
       if (searchResult.status !== EResultParseStatus.success) {
         const mediaServerDetail = metadataStore.mediaServers[mediaServerId];
+        // 只有认证类失败才提示检查认证信息，其余（超时/网络不可达/解析异常）展示真实原因（#1396）
+        const failReason =
+          searchResult.status === EResultParseStatus.needLogin
+            ? "请检查认证信息"
+            : (searchResult.errorMessage ?? "未知错误");
         runtimeStore.showSnakebar(
-          `媒体服务器 ${mediaServerDetail.name} [${mediaServerDetail.address}] 更新失败，请检查认证信息`,
-          { color: "error" },
+          `媒体服务器 ${mediaServerDetail.name} [${mediaServerDetail.address}] 更新失败：${failReason}`,
+          {
+            color: "error",
+          },
         );
         return;
       }

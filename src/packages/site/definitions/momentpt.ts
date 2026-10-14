@@ -1,6 +1,9 @@
 /**
  * 新站点模板 - NP架构
  * 基于NexusPHP架构的通用站点配置
+ * @JackettDefinitions https://github.com/Jackett/Jackett/blob/master/src/Jackett.Common/Definitions/momentpt.yml
+ * @PDSDefinitions https://github.com/mantou568/pre-dessert-sites/blob/main/site_config/sites/momentpt.json
+ * @PTMDefinitions https://github.com/JustLookAtNow/pt_mate/blob/master/assets/sites/momentpt.json
  */
 import { type ISiteMetadata } from "../types";
 import { CategoryInclbookmarked, CategoryIncldead, CategorySpstate, SchemaMetadata } from "../schemas/NexusPHP";
@@ -34,78 +37,19 @@ export const siteMetadata: ISiteMetadata = {
       name: "分类",
       key: "cat",
       options: [
-        { name: "人像摄影", value: 401 },
-        { name: "风景摄影", value: 402 },
-        { name: "街拍摄影", value: 403 },
-        { name: "微距摄影", value: 404 },
-        { name: "建筑摄影", value: 405 },
-        { name: "动物摄影", value: 406 },
-        { name: "纪实摄影", value: 407 },
-        { name: "艺术摄影", value: 408 },
-        { name: "摄影教程", value: 409 },
-        { name: "摄影器材", value: 410 },
-        { name: "其他", value: 411 },
+        { name: "写真", value: 401 },
+        { name: "人像", value: 402 },
+        { name: "风光", value: 403 },
+        { name: "纪实", value: 404 },
+        { name: "人文", value: 405 },
+        { name: "动物", value: 411 },
+        { name: "美食", value: 412 },
+        { name: "超现实", value: 413 },
+        { name: "儿童", value: 414 },
+        { name: "静物", value: 415 },
+        { name: "杂志", value: 416 },
       ],
       cross: { mode: "append", key: "cat" },
-    },
-    {
-      name: "媒介",
-      key: "medium",
-      options: [
-        { name: "RAW格式", value: 1 },
-        { name: "JPEG", value: 2 },
-        { name: "TIFF", value: 3 },
-        { name: "PNG", value: 4 },
-        { name: "PSD", value: 5 },
-        { name: "PDF电子书", value: 6 },
-        { name: "视频教程", value: 7 },
-        { name: "音频教程", value: 8 },
-        { name: "其他", value: 9 },
-      ],
-      cross: { mode: "append", key: "medium" },
-    },
-    {
-      name: "相机品牌",
-      key: "codec",
-      options: [
-        { name: "Canon", value: 1 },
-        { name: "Nikon", value: 2 },
-        { name: "Sony", value: 3 },
-        { name: "Fujifilm", value: 4 },
-        { name: "Leica", value: 5 },
-        { name: "Olympus", value: 6 },
-        { name: "Panasonic", value: 7 },
-        { name: "其他", value: 8 },
-      ],
-      cross: { mode: "append", key: "codec" },
-    },
-    {
-      name: "镜头类型",
-      key: "audiocodec",
-      options: [
-        { name: "定焦镜头", value: 1 },
-        { name: "变焦镜头", value: 2 },
-        { name: "广角镜头", value: 3 },
-        { name: "长焦镜头", value: 4 },
-        { name: "微距镜头", value: 5 },
-        { name: "鱼眼镜头", value: 6 },
-        { name: "移轴镜头", value: 7 },
-        { name: "其他", value: 8 },
-      ],
-      cross: { mode: "append", key: "audiocodec" },
-    },
-    {
-      name: "图片尺寸",
-      key: "standard",
-      options: [
-        { name: "8K+", value: 1 },
-        { name: "4K", value: 2 },
-        { name: "2K", value: 3 },
-        { name: "1080p", value: 4 },
-        { name: "720p", value: 5 },
-        { name: "其他", value: 6 },
-      ],
-      cross: { mode: "append", key: "standard" },
     },
     CategoryIncldead,
     CategorySpstate,

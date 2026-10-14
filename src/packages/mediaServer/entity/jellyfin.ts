@@ -5,13 +5,9 @@ import {
   IMediaServerMetadata,
   IMediaServerSearchOptions,
   IMediaServerSearchResult,
-} from "@ptd/mediaServer";
-import axios, { AxiosRequestConfig, AxiosResponse } from "axios";
-import {
-  IEmbyQueryItem,
-  IEmbyQueryResult,
-  IEmbySystemInfo as IJellyfinSystemInfo,
-} from "@ptd/mediaServer/entity/emby.ts";
+} from "../types";
+import axios, { AxiosError, AxiosRequestConfig, AxiosResponse } from "axios";
+import { IEmbyQueryItem, IEmbyQueryResult, IEmbySystemInfo as IJellyfinSystemInfo } from "./emby.ts";
 import { EResultParseStatus } from "@ptd/site";
 import { toMerged } from "es-toolkit";
 import urlJoin from "url-join";
@@ -61,10 +57,10 @@ export default class Jellyfin extends AbstractMediaServer<IJellyfinConfig> {
     return serverAddress;
   }
 
-  protected async request<T = any, R = AxiosResponse<T>, D = any>(
+  protected async request<T = any, D = any>(
     url: string,
     config: AxiosRequestConfig<D> = {},
-  ): Promise<R> {
+  ): Promise<AxiosResponse<T, D>> {
     config.baseURL = this.baseUrl;
     config.timeout ??= this.config.timeout; // 未额外传入 timeout 时，使用默认的 timeout
 
@@ -80,7 +76,7 @@ export default class Jellyfin extends AbstractMediaServer<IJellyfinConfig> {
     // 处理请求url
     config.url = url;
 
-    return (await axios.request(config)) as R;
+    return axios.request<T>(config);
   }
 
   public async ping(): Promise<boolean> {
@@ -174,7 +170,14 @@ export default class Jellyfin extends AbstractMediaServer<IJellyfinConfig> {
         result.status = EResultParseStatus.needLogin;
       }
     } catch (e) {
-      result.status = EResultParseStatus.parseError;
+      // 401 是认证问题（needLogin），其余（超时、网络不可达、解析异常等）不是认证问题，
+      // 需要把真实错误带回去，避免 UI 统一提示「请检查认证信息」误导排障（#1396）
+      if (e instanceof AxiosError && e.response?.status === 401) {
+        result.status = EResultParseStatus.needLogin;
+      } else {
+        result.status = EResultParseStatus.parseError;
+      }
+      result.errorMessage = e instanceof Error ? `${e.name}: ${e.message}` : String(e);
     }
 
     return result;

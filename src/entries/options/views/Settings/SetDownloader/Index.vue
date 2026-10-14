@@ -2,15 +2,18 @@
 import { computed, ref } from "vue";
 import { computedAsync } from "@vueuse/core";
 import { useI18n } from "vue-i18n";
+import { useRouter } from "vue-router";
 import { countBy } from "es-toolkit";
 import type { DataTableHeader } from "vuetify";
 
 import { useMetadataStore } from "@/options/stores/metadata.ts";
 import { useConfigStore } from "@/options/stores/config.ts";
+import { useRuntimeStore } from "@/options/stores/runtime.ts";
 
 import type { TDownloaderKey } from "@/shared/types.ts";
 import { getDownloaderIcon, getDownloaderMetaData, type TorrentClientMetaData } from "@ptd/downloader";
 import { useTableCustomFilter } from "@/options/directives/useAdvanceFilter.ts";
+import { useTableActionColumn } from "@/options/directives/useTableActionColumn.ts";
 
 import AddDialog from "./AddDialog.vue";
 import EditDialog from "./EditDialog.vue";
@@ -22,8 +25,10 @@ import DeleteDialog from "@/options/components/DeleteDialog.vue";
 import NavButton from "@/options/components/NavButton.vue";
 
 const { t } = useI18n();
+const router = useRouter();
 const metadataStore = useMetadataStore();
 const configStore = useConfigStore();
+const runtimeStore = useRuntimeStore();
 
 const showAddDialog = ref<boolean>(false);
 const showEditDialog = ref<boolean>(false);
@@ -42,16 +47,18 @@ const downloaderMetadata = computedAsync(async () => {
   return downloaderMetaData;
 }, {});
 
-const fullTableHeader = [
-  { title: "№", key: "sortIndex", align: "end", width: "100" },
-  { title: t("common.type"), key: "type", align: "center" },
-  { title: t("SetDownloader.common.name"), key: "name", align: "start" },
-  { title: t("SetDownloader.common.address"), key: "address", align: "start" },
-  { title: t("common.username"), key: "username", align: "start" },
-  { title: t("SetDownloader.index.table.enabled"), key: "enabled", align: "center" },
-  { title: t("SetDownloader.index.table.autodl"), key: "feature.DefaultAutoStart", align: "center" },
-  { title: t("common.action"), key: "action", sortable: false },
-] as DataTableHeader[];
+const fullTableHeader = computed(() =>
+  useTableActionColumn([
+    { title: "№", key: "sortIndex", align: "end", width: "100" },
+    { title: t("common.type"), key: "type", align: "center" },
+    { title: t("SetDownloader.common.name"), key: "name", align: "start" },
+    { title: t("SetDownloader.common.address"), key: "address", align: "start" },
+    { title: t("common.username"), key: "username", align: "start" },
+    { title: t("SetDownloader.index.table.enabled"), key: "enabled", align: "center" },
+    { title: t("SetDownloader.index.table.autodl"), key: "feature.DefaultAutoStart", align: "center" },
+    { title: t("common.action"), key: "action", sortable: false },
+  ] as DataTableHeader[]),
+);
 const tableSelected = ref<TDownloaderKey[]>([]);
 
 const booleanField = {
@@ -86,6 +93,11 @@ function editDownloader(downloaderId: TDownloaderKey) {
   showEditDialog.value = true;
 }
 
+function manageDownloader(downloaderId: TDownloaderKey) {
+  // 跳转到 MyClient 页面并预选该下载服务器，进行种子管理
+  void router.push({ path: "/my-client", query: { downloader: downloaderId } });
+}
+
 function editDownloaderPathAndTag(downloaderId: TDownloaderKey) {
   toEditDownloaderId.value = downloaderId;
   showPathAndTagSuggestDialog.value = true;
@@ -98,7 +110,15 @@ function editDownloaderSiteFilter(downloaderId: TDownloaderKey) {
 
 const toDeleteIds = ref<TDownloaderKey[]>([]);
 function deleteDownloader(downloaderId: TDownloaderKey[]) {
-  toDeleteIds.value = downloaderId.filter((i) => i !== metadataStore.defaultDownloader?.id); // 默认下载器不允许删除（防止多选时选中）
+  const defaultDownloaderId = metadataStore.defaultDownloader?.id;
+  toDeleteIds.value = downloaderId.filter((i) => i !== defaultDownloaderId); // 默认下载器不允许删除（防止多选时选中）
+
+  // 多选删除时若有默认下载器被跳过，需要明确告知用户，否则会出现「选了 N 个只删掉 N-1 个」的静默行为
+  if (toDeleteIds.value.length !== downloaderId.length) {
+    const skippedName = metadataStore.downloaders?.[defaultDownloaderId!]?.name ?? defaultDownloaderId!;
+    runtimeStore.showSnakebar(t("SetDownloader.index.remove.defaultNotDeleted", [skippedName]), { color: "warning" });
+  }
+
   showDeleteDialog.value = true;
 }
 
@@ -111,7 +131,7 @@ async function confirmDeleteDownloader(downloaderId: TDownloaderKey) {
   <v-alert :title="t('route.Settings.SetDownloader')" type="info" />
   <v-card class="set-downloader">
     <v-card-title>
-      <v-row class="ma-0">
+      <v-row gap="0" class="ma-0">
         <NavButton :text="t('common.btn.add')" color="success" icon="mdi-plus" @click="showAddDialog = true" />
 
         <NavButton
@@ -148,7 +168,7 @@ async function confirmDeleteDownloader(downloaderId: TDownloaderKey) {
           <template #prepend-inner>
             <v-menu min-width="100">
               <template v-slot:activator="{ props }">
-                <v-icon icon="mdi-filter" v-bind="props" variant="plain" />
+                <v-icon icon="mdi-filter" v-bind="props" />
               </template>
               <v-list class="pa-0">
                 <v-list-item v-for="(transKey, filterKey) in booleanField">
@@ -260,10 +280,12 @@ async function confirmDeleteDownloader(downloaderId: TDownloaderKey) {
       <template #item.action="{ item }">
         <v-btn-group class="table-action" density="compact" variant="plain">
           <v-btn
-            :disabled="true"
+            :disabled="!item.enabled /* 未启用的下载服务器无法获取状态 */"
             :title="t('SetDownloader.index.table.action.status')"
+            color="green"
             icon="mdi-information-outline"
             size="small"
+            @click="manageDownloader(item.id)"
           />
 
           <v-btn
@@ -294,9 +316,27 @@ async function confirmDeleteDownloader(downloaderId: TDownloaderKey) {
             @click="editDownloaderSiteFilter(item.id)"
           ></v-btn>
 
+          <!-- 默认下载服务器不允许删除；disabled 的 v-btn 不触发鼠标事件，故用外层 v-tooltip 的 activator 插槽包裹以承载提示 -->
+          <v-tooltip
+            v-if="item.id == metadataStore.defaultDownloader?.id"
+            :text="t('SetDownloader.index.table.action.deleteDefaultDownloader')"
+            location="top"
+            max-width="400"
+          >
+            <template #activator="{ props: tooltipProps }">
+              <v-btn
+                v-bind="tooltipProps"
+                :title="t('SetDownloader.index.table.action.deleteDefaultDownloader')"
+                color="error"
+                disabled
+                icon="mdi-delete"
+                size="small"
+              />
+            </template>
+          </v-tooltip>
           <v-btn
+            v-else
             :title="t('common.remove')"
-            :disabled="item.id == metadataStore.defaultDownloader?.id /* 默认下载器不允许删除 */"
             color="error"
             icon="mdi-delete"
             size="small"

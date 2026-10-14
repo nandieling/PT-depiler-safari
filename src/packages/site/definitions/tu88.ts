@@ -1,3 +1,6 @@
+/**
+ * @PDSDefinitions https://github.com/mantou568/pre-dessert-sites/blob/main/site_config/sites/tu88.json
+ */
 import type { ISiteMetadata } from "../types";
 import { CategoryInclbookmarked, CategoryIncldead, CategorySpstate, SchemaMetadata } from "../schemas/NexusPHP";
 
@@ -12,7 +15,8 @@ export const siteMetadata: ISiteMetadata = {
   type: "private",
   schema: "NexusPHP",
 
-  urls: ["https://pt.tu88.men/"],
+  urls: ["uggcf://cg.gh88.zra/"],
+  favicon: "./_default_nexusphp.png",
 
   category: [
     {

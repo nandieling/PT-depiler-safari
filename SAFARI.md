@@ -30,15 +30,19 @@ The Safari manifest intentionally keeps several upstream declarations that Safar
 
 ## Update from the official project
 
-The local `safari` branch starts from the official `master` history. Commit Safari-specific changes before updating, then run:
+This branch carries one squashed snapshot of the official repository plus the Safari layer, so it shares no history with upstream. The last imported upstream commit is recorded in `.upstream-synced`, and `pnpm update:upstream` replays everything after it as a three-way patch:
 
 ```bash
-pnpm update:upstream
+pnpm update:upstream              # upstream/master -> .upstream-synced, applied with git apply --3way
+pnpm install --no-frozen-lockfile
 pnpm check
+pnpm build:dist-safari
 pnpm build:safari-app
 ```
 
-The update script fetches and merges `origin/master`. If upstream changes overlap the Safari compatibility layer, Git stops with an explicit conflict so the adaptation can be reviewed.
+Files that upstream changed and the Safari layer also touches come out with conflict markers, and the script lists them; resolve, then update `.upstream-synced` by re-running the script. Only `src`, `public`, `vite`, `vite.config.ts`, `package.json`, `pnpm-lock.yaml`, `pnpm-workspace.yaml` and `.dsh` are synced, so the Safari/Xcode project files in this repository are never touched.
+
+Upstream expects Firefox to use `background.page` (`src/entries/background/firefox_main.html`). Safari's MV3 accepts only `background.scripts`, so the Safari manifest points at `src/entries/background/safari_main.ts`, which mirrors that HTML entry.
 
 ## Safari platform differences
 

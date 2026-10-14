@@ -1,3 +1,8 @@
+/**
+ * @JackettDefinitions https://github.com/Jackett/Jackett/blob/master/src/Jackett.Common/Definitions/tjupt.yml
+ * @PTPPDefinitions https://github.com/pt-plugins/PT-Plugin-Plus/blob/dev/resource/sites/tjupt.org/config.json
+ * @PDSDefinitions https://github.com/mantou568/pre-dessert-sites/blob/main/site_config/sites/tjupt.json
+ */
 import { set } from "es-toolkit/compat";
 import Sizzle from "sizzle";
 
@@ -137,9 +142,11 @@ export const siteMetadata: ISiteMetadata = {
         { name: "驻站", selector: ".tag.tag-internal-team", color: "green" },
         { name: "中字", selector: ".tag.tag-chinese", color: "light-green" },
         { name: "应求", selector: ".tag.tag-response", color: "indigo" },
+        { name: "保种", selector: ".tag.tag-keepseed", color: "#FF6666" },
         { name: "竞价置顶", selector: ".tag.tag-sticky", color: "yellow" },
         { name: "加速中", selector: ".tag.tag-speedup", color: "pink" },
         { name: "救活", selector: ".tag.tag-reseed", color: "indigo" },
+        { name: "推荐", selector: ".tag.tag-recommended", color: "#CC3399" },
       ],
     },
   },

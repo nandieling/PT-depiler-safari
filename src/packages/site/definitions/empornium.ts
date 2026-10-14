@@ -1,3 +1,8 @@
+/**
+ * @JackettDefinitions https://github.com/Jackett/Jackett/blob/master/src/Jackett.Common/Definitions/empornium.yml
+ * @PTPPDefinitions https://github.com/pt-plugins/PT-Plugin-Plus/blob/dev/resource/sites/empornium.sx/config.json
+ * @PDSDefinitions https://github.com/mantou568/pre-dessert-sites/blob/main/site_config/sites/empornium.json
+ */
 import { type ISiteMetadata, ETorrentStatus } from "../types";
 import { SchemaMetadata } from "../schemas/Luminance";
 import { buildCategoryOptionsFromDict } from "../utils";
@@ -57,7 +62,7 @@ export const siteMetadata: ISiteMetadata = {
   id: "empornium",
   version: 1,
   name: "Empornium",
-  aka: ["EMP"],
+  aka: ["EMP", "峨眉派"],
   description: "Empornium (EMP) is a Private Torrent Tracker for 3X.",
   tags: ["成人", "XXX"],
   timezoneOffset: "-1100",
@@ -66,7 +71,7 @@ export const siteMetadata: ISiteMetadata = {
   schema: "Luminance",
 
   urls: ["uggcf://rzcnenqvfr.ef/", "uggcf://jjj.rzcbeavhz.fk/"],
-  legacyUrls: ["https://www.empornium.is/", "https://www.empornium.me/", "uggcf://jjj.rzcbeavhz.ef/"],
+  legacyUrls: ["uggcf://jjj.rzcbeavhz.vf/", "uggcf://jjj.rzcbeavhz.zr/", "uggcf://jjj.rzcbeavhz.ef/"],
 
   category: [
     {

@@ -1,3 +1,7 @@
+/**
+ * @JackettDefinitions https://github.com/Jackett/Jackett/blob/master/src/Jackett.Common/Definitions/novahd.yml
+ * @PDSDefinitions https://github.com/mantou568/pre-dessert-sites/blob/main/site_config/sites/novahd.json
+ */
 import type { ISiteMetadata } from "../types";
 import { CategoryInclbookmarked, CategoryIncldead, CategorySpstate, SchemaMetadata } from "../schemas/NexusPHP";
 
@@ -13,7 +17,7 @@ export const siteMetadata: ISiteMetadata = {
   type: "private",
   schema: "NexusPHP",
 
-  urls: ["uggcf://cg.abinuq.gbc/"],
+  urls: ["uggcf://cg.abinuq.gbc/", "uggcf://genpxre.abinuq.gbc/"],
 
   category: [
     {

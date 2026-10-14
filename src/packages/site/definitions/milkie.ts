@@ -1,3 +1,6 @@
+/**
+ * @JackettDefinitions https://github.com/Jackett/Jackett/blob/master/src/Jackett.Common/Definitions/milkie.yml
+ */
 import type { ISiteMetadata, ITorrent } from "../types";
 import { AxiosRequestConfig, AxiosResponse } from "axios";
 import PrivateSite from "../schemas/AbstractPrivateSite";
@@ -24,7 +27,7 @@ export const siteMetadata: ISiteMetadata = {
   type: "private",
   schema: "AbstractPrivateSite",
 
-  urls: ["https://milkie.cc/"],
+  urls: ["uggcf://zvyxvr.pp/"],
 
   category: [
     {

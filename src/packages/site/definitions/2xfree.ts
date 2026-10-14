@@ -1,5 +1,6 @@
 /**
  * @JackettIssue https://github.com/Jackett/Jackett/issues/13943
+ * @PTPPDefinitions https://github.com/pt-plugins/PT-Plugin-Plus/blob/dev/resource/sites/pt.2xfree.org/config.json
  */
 import type { ISiteMetadata } from "../types";
 
@@ -13,7 +14,7 @@ export const siteMetadata: ISiteMetadata = {
   type: "private",
   schema: "NexusPHP",
 
-  urls: ["https://pt.2xfree.org/"],
+  urls: ["uggcf://cg.2kserr.bet/"],
 
   isDead: true,
 

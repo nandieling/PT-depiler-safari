@@ -1,3 +1,7 @@
+/**
+ * @JackettDefinitions https://github.com/Jackett/Jackett/blob/master/src/Jackett.Common/Definitions/clearjav-api.yml
+ * @PDSDefinitions https://github.com/mantou568/pre-dessert-sites/blob/main/site_config/sites/clearjav.json
+ */
 import { type ISiteMetadata } from "../types";
 import { CategoryFree, SchemaMetadata } from "../schemas/Unit3D";
 
@@ -13,7 +17,7 @@ export const siteMetadata: ISiteMetadata = {
   type: "private",
   schema: "Unit3D",
 
-  urls: ["https://clearjav.com/"],
+  urls: ["uggcf://pyrnewni.pbz/"],
 
   search: {
     ...SchemaMetadata.search,

@@ -1,3 +1,7 @@
+/**
+ * @JackettDefinitions https://github.com/Jackett/Jackett/blob/master/src/Jackett.Common/Indexers/Definitions/PassThePopcorn.cs
+ * @PTPPDefinitions https://github.com/pt-plugins/PT-Plugin-Plus/blob/dev/resource/sites/passthepopcorn.me/config.json
+ */
 import Sizzle from "sizzle";
 import Gazelle, { SchemaMetadata } from "../schemas/Gazelle.ts";
 import { parseValidTimeString, parseSizeString, buildCategoryOptionsFromList } from "../utils";
@@ -117,9 +121,7 @@ export const siteMetadata: ISiteMetadata = {
       {
         requestConfig: {
           url: "/user.php",
-          params: {
-            /* id: flushUserInfo.id */
-          },
+          params: {/* id: flushUserInfo.id */},
           responseType: "document",
         },
         assertion: { id: "params.id" },

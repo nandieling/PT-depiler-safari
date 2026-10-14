@@ -1,34 +1,48 @@
 <script setup lang="ts">
-import { ref, onMounted } from "vue";
+import { computed, ref, onMounted } from "vue";
 import { useI18n } from "vue-i18n";
 import type { CAddTorrentOptions } from "@ptd/downloader";
 
-import type { IKeepUploadTask } from "@/shared/types.ts";
+import type { IKeepUploadTask, TKeepUploadTaskKey } from "@/shared/types.ts";
 import { sendMessage } from "@/messages.ts";
 import { formatSize, formatDate } from "@/options/utils.ts";
 import { useRuntimeStore } from "@/options/stores/runtime.ts";
 import { useMetadataStore } from "@/options/stores/metadata.ts";
+import { useConfigStore } from "@/options/stores/config.ts";
+import { useTableActionColumn } from "@/options/directives/useTableActionColumn.ts";
 
 import SiteFavicon from "@/options/components/SiteFavicon/Index.vue";
 
 const { t } = useI18n();
 const runtimeStore = useRuntimeStore();
 const metadataStore = useMetadataStore();
+const configStore = useConfigStore();
 
 const tasks = ref<IKeepUploadTask[]>([]);
-const selectedTasks = ref<IKeepUploadTask[]>([]);
+// v-data-table 设置了 item-value="id"，因此 v-model 中保存的是任务ID（TKeepUploadTaskKey）而非任务对象
+const selectedTasks = ref<TKeepUploadTaskKey[]>([]);
 const expanded = ref<string[]>([]);
 const loading = ref(false);
 const tableKey = ref(0); // 用于强制刷新表格
 
-const headers = [
-  { title: t("KeepUploadTask.table.site"), key: "site", align: "center" as const, sortable: false },
-  { title: t("KeepUploadTask.table.title"), key: "title", align: "start" as const },
-  { title: t("KeepUploadTask.table.size"), key: "size", align: "end" as const },
-  { title: t("KeepUploadTask.table.count"), key: "count", align: "center" as const },
-  { title: t("KeepUploadTask.table.time"), key: "time", align: "center" as const },
-  { title: t("common.action"), key: "action", align: "center" as const, sortable: false },
-];
+const headers = computed(() => {
+  const tableHeaders = useTableActionColumn([
+    { title: t("KeepUploadTask.table.site"), key: "site", align: "center" as const, sortable: false },
+    { title: t("KeepUploadTask.table.title"), key: "title", align: "start" as const },
+    { title: t("KeepUploadTask.table.size"), key: "size", align: "end" as const },
+    { title: t("KeepUploadTask.table.count"), key: "count", align: "center" as const },
+    { title: t("KeepUploadTask.table.time"), key: "time", align: "center" as const },
+    { title: t("common.action"), key: "action", align: "center" as const, sortable: false },
+  ]);
+
+  // 本表格使用 show-expand，展开列由 v-data-table 追加在表头末尾。
+  // 操作列固定在行尾时，需要让展开列一并固定在行尾（并给出固定宽度），否则展开列会被操作列遮挡。
+  if (configStore.tableActionColumnFixed && configStore.tableActionColumnPosition === "end") {
+    tableHeaders.push({ key: "data-table-expand", width: 48, fixed: "end" });
+  }
+
+  return tableHeaders;
+});
 
 async function loadTasks() {
   loading.value = true;
@@ -63,10 +77,10 @@ async function deleteSelectedTasks() {
   if (!confirm(t("KeepUploadTask.deleteSelectedConfirm", { count: selectedTasks.value.length }))) return;
 
   try {
-    for (const task of selectedTasks.value) {
-      await sendMessage("deleteKeepUploadTask", task.id);
+    for (const taskId of selectedTasks.value) {
+      await sendMessage("deleteKeepUploadTask", taskId);
     }
-    tasks.value = tasks.value.filter((t) => !selectedTasks.value.includes(t));
+    tasks.value = tasks.value.filter((t) => !selectedTasks.value.includes(t.id));
     selectedTasks.value = [];
     runtimeStore.showSnakebar(t("KeepUploadTask.deleteSuccess"), { color: "success" });
   } catch (e) {
@@ -255,16 +269,16 @@ async function copyLinksToClipboard(task: IKeepUploadTask) {
           <a
             :href="item.items[0]?.link"
             target="_blank"
-            class="text-decoration-none text-high-emphasis text-subtitle-1 text-truncate"
+            class="text-decoration-none text-high-emphasis text-body-large text-truncate"
             rel="noopener noreferrer nofollow"
           >
             {{ item.title }}
           </a>
-          <div class="text-caption text-grey">
+          <div class="text-body-small text-grey">
             {{ t("KeepUploadTask.savePath") }}{{ item.downloadOptions?.clientName }} ->
             {{ item.downloadOptions?.savePath || t("KeepUploadTask.defaultPath") }}
           </div>
-          <div class="text-caption">{{ t("KeepUploadTask.torrentCount") }}{{ item.items.length }}</div>
+          <div class="text-body-small">{{ t("KeepUploadTask.torrentCount") }}{{ item.items.length }}</div>
         </div>
       </template>
 

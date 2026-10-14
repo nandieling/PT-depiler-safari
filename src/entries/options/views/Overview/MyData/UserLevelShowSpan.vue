@@ -24,7 +24,6 @@ const {
 
 const { t } = useI18n();
 const configStore = useConfigStore();
-const currentTime = +new Date();
 
 // Toggle function for double-click
 function toggleIntervalDisplay() {
@@ -66,8 +65,17 @@ function formatDuration(duration: number | isoDuration) {
 
 function formatIntervalDate(duration: number | isoDuration): string {
   try {
-    // 展示剩余时间时，基于 current 计算；展现等级要求时，基于 joinTime 计算
-    const refTime = useJoinTimeAsRef ? (userInfo.joinTime ?? currentTime) : currentTime;
+    // #1140 unmet 结果带有绝对达标时间时优先使用，避免「挂载时刻 + 重算差值」的时钟错位导致日期漂移
+    if (levelRequirement.passTime) {
+      const passTimeDate = formatDate(new Date(levelRequirement.passTime), "yyyy-MM-dd");
+      if (typeof passTimeDate === "string") {
+        return passTimeDate;
+      }
+    }
+
+    // 展示剩余时间时，基于当前时刻计算；展现等级要求时，基于 joinTime 计算
+    // 注意每次渲染时重新取值，不能缓存到 setup 顶层（浏览器长期不关闭时缓存值会持续陈旧）
+    const refTime = useJoinTimeAsRef ? (userInfo.joinTime ?? Date.now()) : Date.now();
     if (typeof duration === "number") {
       // 如果是数字（秒）
       const targetDate = new Date(refTime + duration * 1000);
@@ -218,12 +226,12 @@ function formatBonus(bonusKey: "bonus" | "seedingBonus") {
   </template>
 
   <template v-if="levelRequirement.posts">
-    <v-icon :title="t('levelRequirement.posts')" color="green darken-4" icon="mdi-note-plus" small />
+    <v-icon :title="t('levelRequirement.posts')" color="green-darken-4" icon="mdi-note-plus" size="small" />
     {{ formatNumber(levelRequirement.posts, { minimumFractionDigits: 0 }) }};
   </template>
 
   <template v-if="levelRequirement.adoptions">
-    <v-icon :title="t('levelRequirement.adoptions')" color="green-darken-4" icon="mdi-hand-extended" small />
+    <v-icon :title="t('levelRequirement.adoptions')" color="green-darken-4" icon="mdi-hand-extended" size="small" />
     {{ formatNumber(levelRequirement.adoptions, { minimumFractionDigits: 0 }) }};
   </template>
 </template>

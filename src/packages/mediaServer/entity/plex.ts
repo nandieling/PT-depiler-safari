@@ -10,7 +10,7 @@ import {
   IMediaServerMetadata,
   IMediaServerSearchOptions,
   IMediaServerSearchResult,
-} from "@ptd/mediaServer";
+} from "../types";
 
 export const mediaServerMetaData: IMediaServerMetadata = {
   description: "Plex 是一款流行的媒体服务器软件，支持多种设备和平台，提供丰富的媒体管理和播放功能",
@@ -129,10 +129,10 @@ export default class Plex extends AbstractMediaServer<IPlexConfig> {
     return serverAddress.replace(/\/$/, "") + "/web/index.html";
   }
 
-  protected async request<T = any, R = AxiosResponse<T>, D = any>(
+  protected async request<T = any, D = any>(
     url: string,
     config: AxiosRequestConfig<D> = {},
-  ): Promise<R> {
+  ): Promise<AxiosResponse<T, D>> {
     config.baseURL = this.apiBaseUrl;
     config.url = url;
     config.timeout ??= this.config.timeout; // 未额外传入 timeout 时，使用默认的 timeout
@@ -143,7 +143,7 @@ export default class Plex extends AbstractMediaServer<IPlexConfig> {
     config.params["X-Plex-Token"] = this.config.auth.apikey;
 
     config.responseType = "json";
-    return (await axios.request(config)) as R;
+    return axios.request<T>(config);
   }
 
   private async getServerIdentity(): Promise<string | undefined> {
@@ -192,7 +192,7 @@ export default class Plex extends AbstractMediaServer<IPlexConfig> {
           server: this.config.id!,
           // @ts-ignore
           name: item.parentTitle ? `${item.parentTitle} (${item.title})` : item.title,
-          url: `${this.webBaseUrl}#!/server/${serverIdentity}/details?key=${item.key.replace(/\/children$/, '')}`,
+          url: `${this.webBaseUrl}#!/server/${serverIdentity}/details?key=${item.key.replace(/\/children$/, "")}`,
           type: item.type === "movie" ? "Movie" : item.type,
           description: item.summary,
           // @ts-ignore

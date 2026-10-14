@@ -1,3 +1,6 @@
+/**
+ * @JackettDefinitions https://github.com/Jackett/Jackett/blob/master/src/Jackett.Common/Definitions/gay-torrents.yml
+ */
 import type { AxiosRequestConfig } from "axios";
 import type { ISiteMetadata, ITorrent, ISearchResult, ISearchEntryRequestConfig } from "../types";
 import PrivateSite from "../schemas/AbstractPrivateSite";
@@ -9,7 +12,7 @@ export const siteMetadata: ISiteMetadata = {
   tags: ["成人"],
   type: "private",
   timezoneOffset: "+0800",
-  urls: ["https://www.gay-torrents.net/"],
+  urls: ["uggcf://jjj.tnl-gbeeragf.arg/"],
 
   search: {
     requestConfig: {

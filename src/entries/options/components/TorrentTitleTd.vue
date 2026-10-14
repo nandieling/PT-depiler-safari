@@ -1,8 +1,7 @@
 <script setup lang="ts">
-import { reactive, ref, computed, useTemplateRef } from "vue";
+import { reactive, ref, computed } from "vue";
 import { useI18n } from "vue-i18n";
 import { useRouter } from "vue-router";
-import { useElementSize } from "@vueuse/core";
 
 import { socialBuildUrlMap } from "@ptd/social";
 import type { ITorrent } from "@ptd/site";
@@ -19,10 +18,6 @@ const { item, showSocial = true } = defineProps<{
 const { t } = useI18n();
 const router = useRouter();
 const configStore = useConfigStore();
-
-const { width: containerWidth } = useElementSize(useTemplateRef<HTMLDivElement>("container"));
-const { width: tagsWidth } = useElementSize(useTemplateRef<HTMLDivElement>("tags"));
-const { width: socialWidth } = useElementSize(useTemplateRef<HTMLDivElement>("social"));
 
 interface ISocialInformationData extends ISocialInformation {
   loading?: boolean;
@@ -86,19 +81,14 @@ function canAdvanceSearch(site: TSupportSocialSite) {
 </script>
 
 <template>
-  <v-container ref="container" class="t_main">
-    <v-row>
+  <v-container class="t_main pa-0">
+    <v-row gap="0" class="flex-nowrap">
       <!-- 种子主标题信息 -->
-      <span
-        :style="{
-          width: `${containerWidth - socialWidth}px`,
-        }"
-        class="text-truncate"
-      >
+      <span class="text-truncate flex-1-1-0">
         <a
           :href="item.url"
           :title="item.title"
-          class="t_title text-decoration-none text-high-emphasis text-subtitle-1 text-truncate"
+          class="t_title text-decoration-none text-high-emphasis text-body-large text-truncate"
           rel="noopener noreferrer nofollow"
           target="_blank"
         >
@@ -107,7 +97,7 @@ function canAdvanceSearch(site: TSupportSocialSite) {
       </span>
 
       <!-- 种子的媒体信息 -->
-      <div ref="social" class="ml-2">
+      <div class="ml-2 flex-0-0">
         <template v-if="showSocial && configStore.searchEntifyControl.showSocialInformation">
           <template v-for="(meta, key) in socialBuildUrlMap" :key="key">
             <v-menu v-if="item[`ext_${key}`]" open-on-hover>
@@ -139,12 +129,12 @@ function canAdvanceSearch(site: TSupportSocialSite) {
                       </v-img>
                       <h3
                         v-if="socialInformation[key]?.title"
-                        class="text-decoration-none text-ellipsis text-truncate font-weight-bold"
+                        class="text-decoration-none text-truncate font-weight-bold"
                         :title="socialInformation[key]?.title"
                       >
                         {{ socialInformation[key]?.title.split(" / ")[0] }}
                       </h3>
-                      <p v-if="socialInformation[key]?.ratingScore" class="text-caption">
+                      <p v-if="socialInformation[key]?.ratingScore" class="text-body-small">
                         {{ socialInformation[key].ratingScore }}
                         <span v-if="socialInformation[key]?.ratingCount">
                           from {{ socialInformation[key].ratingCount }} votes
@@ -180,7 +170,7 @@ function canAdvanceSearch(site: TSupportSocialSite) {
                       {{ t("common.visit") }}
                     </v-btn>
                     <v-divider class="my-1" />
-                    <p class="text-caption mt-1">( {{ key }}: {{ item[`ext_${key}`] }} )</p>
+                    <p class="text-body-small mt-1">( {{ key }}: {{ item[`ext_${key}`] }} )</p>
                   </div>
                 </v-card-text>
               </v-card>
@@ -189,9 +179,13 @@ function canAdvanceSearch(site: TSupportSocialSite) {
         </template>
       </div>
     </v-row>
-    <v-row v-if="configStore.searchEntifyControl.showTorrentTag || configStore.searchEntifyControl.showTorrentSubtitle">
+    <v-row
+      gap="0"
+      class="flex-nowrap"
+      v-if="configStore.searchEntifyControl.showTorrentTag || configStore.searchEntifyControl.showTorrentSubtitle"
+    >
       <!-- 种子标签信息 -->
-      <div ref="tags">
+      <div class="flex-0-0">
         <template v-if="configStore.searchEntifyControl.showTorrentTag && item.tags && item.tags.length > 0">
           <v-hover v-for="tag in displayedTags" :key="tag.name" v-slot:default="{ isHovering, props }">
             <v-chip
@@ -224,11 +218,8 @@ function canAdvanceSearch(site: TSupportSocialSite) {
       <!-- 种子副标题信息 -->
       <span
         v-if="configStore.searchEntifyControl.showTorrentSubtitle && item.subTitle"
-        :style="{
-          'max-width': item.tags ? `${containerWidth - tagsWidth}px` : undefined,
-        }"
         :title="item.subTitle"
-        class="t_subTitle text-grey text-truncate"
+        class="t_subTitle text-grey text-truncate flex-1-1-0"
       >
         {{ item.subTitle }}
       </span>
@@ -236,4 +227,9 @@ function canAdvanceSearch(site: TSupportSocialSite) {
   </v-container>
 </template>
 
-<style scoped lang="scss"></style>
+<style scoped lang="scss">
+// flex item 默认 min-width: auto 会阻止 text-overflow: ellipsis 收缩截断,需显式归零
+.t_main .text-truncate.flex-1-1-0 {
+  min-width: 0;
+}
+</style>

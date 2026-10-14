@@ -1,8 +1,8 @@
-import { intersection, toMerged } from "es-toolkit";
+import { intersection, isEqual, toMerged } from "es-toolkit";
 import { formatDate } from "date-fns";
 import { saveAs } from "file-saver";
 import { getBackupServer, IBackupData, IBackupFileInfo } from "@ptd/backupServer";
-import { backupDataToJSZipBlob } from "@ptd/backupServer/utils.ts";
+import { backupDataToZipBlob, hasBackupRetentionToApply, pruneBackupFiles } from "@ptd/backupServer/utils.ts";
 import AbstractBackupServer from "@ptd/backupServer/AbstractBackupServer.ts";
 
 import { onMessage, sendMessage } from "@/messages.ts";
@@ -100,6 +100,62 @@ export async function getBackupServerInstance(backupServerId: TBackupServerKey):
   return await getBackupServer(backupServerConfig);
 }
 
+/**
+ * 依据备份服务器的保留策略清理历史备份文件
+ *
+ * - `keepFilename`：本次刚刚上传的备份文件名，永远不会被清理（避免因服务器端 `list()` 结果滞后或时钟偏差而删除刚创建的备份）
+ * - 注意：`list()` 返回的备份列表可能包含非本插件创建的文件，因此我们仅处理文件名符合
+ *   `PTD_backup_yyyyMMddTHHmm.zip` 规则的文件，避免误删用户的其他数据。
+ */
+export async function applyBackupRetention(
+  backupServerId: TBackupServerKey,
+  keepFilename?: string,
+): Promise<IBackupFileInfo[]> {
+  const metadataStore = (await sendMessage("getExtStorage", "metadata")) as IMetadataPiniaStorageSchema;
+  const retention = metadataStore.backupServers[backupServerId]?.retention;
+
+  if (!hasBackupRetentionToApply(retention)) {
+    return [];
+  }
+
+  const backupServerInstance = await getBackupServerInstance(backupServerId);
+  const list = (await backupServerInstance.list()) ?? [];
+
+  const backupFiles = list
+    .filter((item) => /^PTD_backup_\d{16}\.zip$/.test(item.filename))
+    .sort((a, b) => b.time - a.time); // 按备份时间从新到旧排序
+  const [deletedFiles] = pruneBackupFiles(
+    backupFiles.filter((item) => item.filename !== keepFilename),
+    retention,
+  );
+
+  const actuallyDeletedFiles: IBackupFileInfo[] = [];
+  for (const file of deletedFiles) {
+    try {
+      if (await backupServerInstance.deleteFile(file.path)) {
+        actuallyDeletedFiles.push(file);
+      }
+    } catch (e) {
+      logger({
+        msg: `Failed to delete expired backup [${file.filename}] of [${backupServerId}]: ${e instanceof Error ? e.message : String(e)}`,
+      });
+    }
+  }
+
+  if (actuallyDeletedFiles.length > 0) {
+    logger({
+      msg: `Retention policy removed ${actuallyDeletedFiles.length} of ${backupFiles.length} backup(s) of [${backupServerId}]`,
+      data: { deleted: actuallyDeletedFiles.map((item) => item.filename) },
+    });
+  }
+
+  return actuallyDeletedFiles;
+}
+
+onMessage("applyBackupRetention", async ({ data: { backupServerId, keepFilename } }) => {
+  return await applyBackupRetention(backupServerId, keepFilename);
+});
+
 export async function exportBackupData(
   backupServerId: string | "local",
   backupFields: TBackupFields[] = [],
@@ -112,11 +168,12 @@ export async function exportBackupData(
 
   logger({ msg: `Exporting backup data to ${backupServerId}`, data: { backupFields, backupFilename } });
   if (backupServerId === "local") {
-    const jsZipBlob = await backupDataToJSZipBlob(backupData, encryptionKey);
+    const zipBlob = await backupDataToZipBlob(backupData, encryptionKey);
+    // Safari 无 chrome.downloads，只能在页面上下文内用 file-saver 保存
     if (__BROWSER__ === "safari") {
-      saveAs(jsZipBlob, backupFilename);
+      saveAs(zipBlob, backupFilename);
     } else {
-      const blobUrl = URL.createObjectURL(jsZipBlob);
+      const blobUrl = URL.createObjectURL(zipBlob);
       try {
         await sendMessage("downloadFile", { url: blobUrl, filename: backupFilename, conflictAction: "uniquify" });
       } finally {
@@ -134,6 +191,13 @@ export async function exportBackupData(
       const metadataStore = (await sendMessage("getExtStorage", "metadata")) as IMetadataPiniaStorageSchema;
       metadataStore.backupServers[backupServerId].lastBackupAt = new Date().getTime();
       await sendMessage("setExtStorage", { key: "metadata", value: metadataStore });
+
+      // 备份成功后，按照保留策略清理历史备份
+      await applyBackupRetention(backupServerId, backupFilename).catch((e) => {
+        logger({
+          msg: `Failed to apply the backup retention policy of [${backupServerId}]: ${e instanceof Error ? e.message : String(e)}`,
+        });
+      });
     }
 
     return backupStatus;
@@ -170,6 +234,38 @@ export async function restoreBackupData(
         if (field === "userInfo" && keepExistUserInfo) {
           const userInfoStore = ((await sendMessage("getExtStorage", "userInfo")) ?? {}) as TUserInfoStorageSchema;
           fieldData = toMerged(fieldData, userInfoStore);
+        }
+
+        /**
+         * 备份服务器的ID为添加时随机生成的（nanoid），同一台服务器在新旧设备上会产生不同的ID，
+         * 直接恢复会导致出现重复条目（refs: https://github.com/pt-plugins/PT-depiler/issues/1024）。
+         * 此处按「类型 + 完整配置」识别同一台服务器：命中则复用本机已有条目的ID（保留备份中的其余字段），
+         * 未命中的条目正常合入。
+         */
+        if (field === "metadata") {
+          const restoredMetadata = fieldData as IMetadataPiniaStorageSchema;
+          if (restoredMetadata?.backupServers) {
+            const existingMetadata = ((await sendMessage("getExtStorage", "metadata")) ??
+              {}) as IMetadataPiniaStorageSchema;
+            const existingServers = existingMetadata.backupServers ?? {};
+            const mergedServers: IMetadataPiniaStorageSchema["backupServers"] = { ...restoredMetadata.backupServers };
+
+            for (const [existingId, existingServer] of Object.entries(existingServers)) {
+              const duplicatedEntry = Object.entries(mergedServers).find(
+                ([restoredId, restoredServer]) =>
+                  restoredId !== existingId && // ID相同（如自定义ID或同设备重复恢复）无需处理，直接以本机为准覆盖
+                  restoredServer.type === existingServer.type &&
+                  isEqual(restoredServer.config, existingServer.config),
+              );
+              if (duplicatedEntry) {
+                const [restoredId, restoredServer] = duplicatedEntry;
+                mergedServers[existingId] = { ...restoredServer, id: existingId };
+                delete mergedServers[restoredId];
+              }
+            }
+
+            fieldData = { ...restoredMetadata, backupServers: mergedServers };
+          }
         }
 
         await sendMessage("setExtStorage", { key: field, value: fieldData });

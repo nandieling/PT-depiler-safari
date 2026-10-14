@@ -1,3 +1,8 @@
+/**
+ * @JackettDefinitions https://github.com/Jackett/Jackett/blob/master/src/Jackett.Common/Definitions/aither-api.yml
+ * @PTPPDefinitions https://github.com/pt-plugins/PT-Plugin-Plus/blob/dev/resource/sites/aither.cc/config.json
+ * @PDSDefinitions https://github.com/mantou568/pre-dessert-sites/blob/main/site_config/sites/aither.json
+ */
 import { type ISiteMetadata } from "../types";
 import { CategoryFree, SchemaMetadata, userInfoTrans } from "../schemas/Unit3D.ts";
 import { buildCategoryOptionsFromDict } from "../utils.ts";
@@ -52,7 +57,7 @@ export const siteMetadata: ISiteMetadata = {
         { name: "Classical", value: 30 },
         { name: "Electronic", value: 31 },
         { name: "Hip-Hop / Rap", value: 32 },
-        { name: "Jazz &amp; Funk", value: 33 },
+        { name: "Jazz & Funk", value: 33 },
         { name: "Latin", value: 34 },
         { name: "Pop", value: 35 },
         { name: "Rock", value: 36 },

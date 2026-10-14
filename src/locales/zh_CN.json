@@ -49,6 +49,9 @@
       "selectDownloader": "选择下载服务器",
       "title": "重新下载 {0} 条记录"
     },
+    "detail": {
+      "errorMessage": "失败原因"
+    },
     "filterPlaceholder": "过滤下载记录",
     "reDownload": "重新下载",
     "refresh": "刷新下载记录列表",
@@ -125,15 +128,27 @@
     "detail": "详情",
     "loadMore": "加载更多",
     "noItems": "暂无内容，请使用搜索框或点击加载更多按钮",
-    "searchPlaceholder": "搜索词"
+    "searchPlaceholder": "搜索词",
+    "serverFilter": {
+      "all": "全部服务器"
+    }
   },
   "MyClient": {
     "action": {
       "delete": "删除",
+      "detail": "详情",
+      "moveQueueSuccess": "已调整 {count} 个种子的队列位置",
       "pause": "暂停",
       "pauseError": "暂停失败",
       "pauseSelectedSuccess": "已暂停 {count} 个种子",
       "pauseSuccess": "暂停成功",
+      "queue": "队列位置",
+      "queueBottom": "移至队尾",
+      "queueDown": "下移一位",
+      "queueTop": "移至队首",
+      "queueUp": "上移一位",
+      "recheck": "重新校验",
+      "recheckSelectedSuccess": "已重新校验 {count} 个种子",
       "resume": "开始",
       "resumeError": "开始失败",
       "resumeSelectedSuccess": "已开始 {count} 个种子",
@@ -160,8 +175,60 @@
     },
     "columnSelector": "自定义列",
     "deleteSelected": "删除",
+    "detail": {
+      "addTrackerFailure": "添加 Tracker 失败",
+      "addTrackerSuccess": "已添加 Tracker",
+      "addTrackerTitle": "添加 Tracker",
+      "copyHash": "复制 Hash",
+      "copyMagnet": "复制磁力链接",
+      "fileColumnName": "文件名",
+      "fileColumnPriority": "优先级",
+      "fileColumnProgress": "进度",
+      "fileColumnSize": "大小",
+      "fileTitle": "文件",
+      "fileUnsupported": "该下载器不支持文件管理",
+      "noFiles": "暂无文件",
+      "noPeers": "暂无 Peer 连接",
+      "noTrackers": "该下载器不支持获取 Tracker 列表或暂无 Tracker",
+      "operatorFailed": "操作失败",
+      "peersColumnClient": "客户端",
+      "peersColumnCountry": "国家/地区",
+      "peersColumnDownloadSpeed": "下行",
+      "peersColumnEncrypted": "加密",
+      "peersColumnIp": "IP",
+      "peersColumnProgress": "进度",
+      "peersColumnUploadSpeed": "上行",
+      "peersTitle": "Peers",
+      "peersUnsupported": "该下载器不支持查看 Peers",
+      "priorityHighest": "最高",
+      "priorityHigh": "高",
+      "priorityLow": "低",
+      "priorityNormal": "普通",
+      "prioritySkip": "跳过",
+      "removeTracker": "删除",
+      "removeTrackerFailure": "删除 Tracker 失败",
+      "removeTrackerSuccess": "已删除 Tracker",
+      "title": "种子详情",
+      "trackerColumnLastAnnounce": "上次通告",
+      "trackerColumnLeeches": "下载数",
+      "trackerColumnSeeds": "做种数",
+      "trackerColumnStatus": "状态",
+      "trackerColumnTier": "Tier",
+      "trackerColumnUrl": "地址",
+      "trackers": "Tracker 列表",
+      "trackerUnsupported": "该下载器不支持 Tracker 管理",
+      "updateFilePriorityFailure": "更新文件优先级失败",
+      "updateFilePrioritySuccess": "已更新文件优先级"
+    },
     "dialog": {
       "removeData": "同时删除数据"
+    },
+    "label": {
+      "batchBtn": "批量设置标签",
+      "emptyLabel": "标签不能为空",
+      "input": "标签",
+      "success": "已设置 {count} 个种子的标签",
+      "title": "设置标签（{count} 个种子）"
     },
     "pauseSelected": "暂停",
     "pushToDownloader": {
@@ -174,9 +241,27 @@
       "urlInputHint": "每行一个链接或磁力链接",
       "urlInputLabel": "下载链接 / 磁力链接"
     },
+    "recheckSelected": "重新校验",
+    "recheckDialog": {
+      "text": "确定要重新校验选中的 {count} 个种子吗？重新校验会消耗下载服务器的资源，并可能暂时中断做种。",
+      "title": "确认重新校验"
+    },
     "refresh": "刷新",
     "resumeSelected": "开始",
     "searchPlaceholder": "搜索种子名称、Hash、标签、路径",
+    "sitePublic": "公网种子",
+    "sitePublicTip": "公网种子：客户端标记为公开种子，或其 tracker 仅匹配到公开站点",
+    "siteUnmatched": "未匹配",
+    "siteUnmatchedTip": "未匹配到已添加的站点：若该站点使用了独立的 tracker 域名，可在站点定义中补充 trackerUrls",
+    "speedLimit": {
+      "batchBtn": "批量限速",
+      "download": "下载限速（KiB/s，0 表示不限速）",
+      "emptyLimit": "请至少填写上传或下载限速中的一个",
+      "success": "已设置 {count} 个种子的限速",
+      "title": "设置限速（{count} 个种子）",
+      "unitNote": "限速单位为 KiB/s，填写 0 表示不限速；留空表示不修改该方向。",
+      "upload": "上传限速（KiB/s，0 表示不限速）"
+    },
     "state": {
       "checking": "检查中",
       "downloading": "下载中",
@@ -336,6 +421,7 @@
       "moveUp": "在队列中上移",
       "searchAgain": "重新搜索",
       "statusMsg": {
+        "networkError": "网络请求失败（超时 / DNS / 被拦截）",
         "noAdvanceParams": "不支持高级搜索参数",
         "noEmptyKeywords": "不支持空关键词",
         "noNonLatin": "不支持非拉丁字符",
@@ -369,6 +455,7 @@
         "snapshot": "搜索快照"
       },
       "filterLabel": "过滤搜索结果",
+      "highlightSameSizeTorrent": "按大小排序时标记相同大小的种子",
       "limitTorrentTitleTdWidth": "限制种子标题宽度",
       "selectedTorrents": "已选择 {0} 个种子",
       "showSiteName": "显示站点名称",
@@ -431,9 +518,46 @@
     },
     "Editor": {
       "backupConfig": "备份配置",
+      "backupFields": "备份内容",
       "backupInterval": "自动备份间隔",
-      "backupIntervalHint": "设置自动备份间隔（小时），留空或为 0 表示不自动备份，最大 48 小时",
+      "backupIntervalField": "间隔（小时）",
+      "backupIntervalHint": "设置自动备份间隔（小时），留空或为 0 表示不自动备份，可设置为任意时长（例如 168 小时即 7 天）",
+      "clearRetention": "清空保留策略（不自动清理历史备份）",
+      "retention": "备份保留策略",
       "serverConfig": "服务器配置"
+    },
+    "RetentionDialog": {
+      "count": {
+        "maxCount": "保留的备份份数",
+        "title": "按数量保留"
+      },
+      "countSuffix": "份",
+      "daySuffix": "天",
+      "none": "未启用保留策略，历史备份不会被自动清理",
+      "sample": {
+        "hint": "在「保留窗口数 × 窗口宽度」的时间范围内，每个窗口保留最新的一份备份（与 Borg 的 prune 类似）",
+        "horizon": "保留窗口数",
+        "interval": "窗口宽度",
+        "title": "按时间窗口采样保留",
+        "type": {
+          "day": "每天",
+          "month": "每月",
+          "week": "每周",
+          "year": "每年"
+        }
+      },
+      "summary": {
+        "count": "保留最近 {n} 份",
+        "sample": "{type}保留 {n} 份（窗口 {interval} 天）",
+        "separator": "，",
+        "time": "保留 {n} 天"
+      },
+      "time": {
+        "maxAge": "保留天数",
+        "title": "按时间期限保留"
+      },
+      "tip": "保留策略会在每次备份成功后自动清理远端的历史备份文件，多条规则之间取并集（被任一规则保留的备份都不会被清理）。",
+      "title": "备份保留策略"
     },
     "HistoryDialog": {
       "deleteFailure": "删除备份历史 [{name}] 失败",
@@ -478,7 +602,8 @@
     "localImport": "本地导入",
     "snackbar": {
       "failure": "备份失败",
-      "success": "备份成功"
+      "success": "备份成功",
+      "successWithRetention": "备份成功，已清理过期备份"
     },
     "table": {
       "action": {
@@ -489,7 +614,10 @@
       "backupInterval": "自动备份间隔",
       "everyNHour": "每 {n} 小时",
       "lastBackupAt": "最近一次备份时间",
-      "notBackup": "未备份"
+      "notBackup": "未备份",
+      "retention": "保留策略",
+      "retentionDisabled": "未启用保留策略",
+      "retentionEnabled": "已启用保留策略"
     }
   },
   "SetBase": {
@@ -551,6 +679,8 @@
     "ui": {
       "allowDragLink": "允许拖拽链接到侧边栏按钮",
       "allowExceptionSites": "允许设置不启用侧边栏的例外站点（启用后需在站点设置中对应关闭）",
+      "autoToggleNavBarOnDisplayChange": "窗口大小变化时自动展开/收起侧边栏",
+      "autoToggleNavBarOnDisplayChangeNote": "关闭后，调整窗口大小不会自动改变侧边栏的展开状态，需要手动通过顶栏按钮控制。",
       "basicSettings": "基本设置",
       "changeLanguage": "切换语言",
       "confirmTwoStep": "对种子列表页批量复制、本地下载等操作需要二步确认",
@@ -560,6 +690,7 @@
       "contextMenuLinkPush": "启用（下载）链接推送",
       "contextMenuSocialSearch": "启用社交链接（ douban, imdb ）搜索",
       "contextMenuTextSearch": "启用选中文字搜索",
+      "dataTable": "数据表格",
       "displayMode": {
         "auto": "跟随系统",
         "dark": "暗黑模式",
@@ -583,6 +714,11 @@
         "title": "按 主标题 搜索"
       },
       "socialSiteSearchLabel": "社交站点搜索方式",
+      "tableActionColumnFixed": "表格过宽时固定操作列",
+      "tableActionColumnFixedNote": "仅当表格内容超出页面宽度、出现横向滚动时可见效果：操作列会固定在表格所在的一侧（行首或行尾）而不随滚动移动。",
+      "tableActionColumnPosition": "操作列位置",
+      "tableActionColumnPositionEnd": "行尾（默认）",
+      "tableActionColumnPositionStart": "行首",
       "tableMultiSortNote": "多列排序使用方法：点击任意表头字段开始排序，字段上会显示数字“1”。再点击其他字段，依次显示“2”“3”，表示排序优先级。再次点击相同字段可切换升序、降序或取消排序。排序顺序由这些数字决定，数字越小优先级越高。",
       "useLargeIcon": "使用大图标按键"
     },
@@ -669,16 +805,18 @@
       "editDefaultDownloaderBtn": "默认下载服务器设置",
       "emptyNotice": "在使用推送服务之前，您至少需要添加一个下载服务器。",
       "remove": {
+        "defaultNotDeleted": "已跳过默认下载服务器 [{0}]：默认下载服务器不允许删除，请先在「默认下载服务器设置」中切换到其他下载服务器。",
         "multi": "你确定删除这{count}个下载服务器吗？",
         "single": "确认要删除这个下载服务器吗？"
       },
       "table": {
         "action": {
+          "deleteDefaultDownloader": "该下载服务器为当前默认下载服务器，无法删除。请先在「默认下载服务器设置」中切换到其他下载服务器。",
           "deleteDownloader": "删除该下载服务器",
           "setDefault": "设置为默认下载服务器",
           "setPathAndTag": "设置预设的下载路径和标签",
           "setSiteFilter": "设置站点过滤",
-          "status": "状态"
+          "status": "管理下载服务器"
         },
         "autodl": "自动下载？",
         "downloaderCategory": "下载器分类",
@@ -831,8 +969,12 @@
       "oneClickImport": "一键导入站点",
       "reBuildMap": "重建站点映射",
       "settingNote": ["只有配置过的站点才会显示插件图标及相应的功能；", "已离线的站点不再参与搜索和信息获取；"],
+      "sortIndexRedistributed": "站点优先级已重新分配（站点的先后顺序不变）",
       "table": {
         "flushFavicon": "刷新站点图标",
+        "moveDown": "下移一位（长按移至最后）",
+        "moveNeedSortIndex": "按「№」列排序后才能调整站点顺序",
+        "moveUp": "上移一位（长按移至最前）",
         "searchEntries": "搜索入口"
       }
     },
@@ -840,6 +982,9 @@
       "alert1": "此操作会尝试以默认配置导入你选择的站点，请确保该站点已在浏览器上登录过。导入过程不能中断，请耐心等待。",
       "alert2": "未添加的站点列表",
       "importComplete": "一键导入完成，成功添加 {count} 个站点",
+      "includePublicSite": "包含公开站点（{count}）",
+      "includePublicSiteHint": "公开站点无法通过搜索校验，添加时会被直接写入。默认不在列表中显示；打开后它们会出现在列表里并参与「全选」，关闭时已选中的公开站点会被取消选择",
+      "loading": "正在加载站点定义…（已加载 {loaded} 个）",
       "stats": "已选择 {count} 个站点，已添加 {success} 个站点，添加失败 {failed} 个站点。",
       "status": {
         "failed": "添加失败",
@@ -923,12 +1068,14 @@
       "siteDisplay": "站点展示组件",
       "statsSection": "统计部分",
       "styleSettings": "时间轴样式设置",
+      "textColor": "其他文本颜色",
       "timeAdded": "发生时间",
       "timeAlive": "过去时间",
       "timeDisplay": "时间显示方式",
       "timelineSection": "时间轴部分",
       "timelineTitle": "时间轴标题",
-      "usernameAndTitle": "用户名及标题"
+      "usernameAndTitle": "用户名及标题",
+      "userNameColor": "用户名颜色"
     },
     "exportFilename": "{name}的时间轴（{date}）",
     "field": {
@@ -1004,6 +1151,7 @@
     "import": "导入",
     "language": "语言",
     "name": "名称",
+    "noData": "无数据",
     "project": "PT 助手 Plus",
     "remove": "删除",
     "save": "保存",
@@ -1184,6 +1332,7 @@
     "CFBlocked": "CloudFlare 错误！",
     "CFBlockedNotes": "CloudFlare 返回的错误，可能是因为站点启用了 CloudFlare 的安全防护，导致无法获取数据。可以先尝试手动访问一次站点，以通过 CF 验证。如果不起作用，请等待站点自行恢复。",
     "needLogin": "需要登录！",
+    "noUserInput": "请填写 Token/Key！",
     "noResults": "无结果！",
     "parseError": "解析错误！",
     "passParse": "跳过！",

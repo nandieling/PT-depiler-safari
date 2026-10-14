@@ -6,6 +6,7 @@ import { useDisplay, type DataTableHeader } from "vuetify";
 import { sendMessage } from "@/messages.ts";
 import { formatDate } from "@/options/utils.ts";
 import { useConfigStore } from "@/options/stores/config.ts";
+import { useTableActionColumn } from "@/options/directives/useTableActionColumn.ts";
 import type { ITorrentDownloadMetadata, TTorrentDownloadKey } from "@/shared/types.ts";
 
 import SiteFavicon from "@/options/components/SiteFavicon/Index.vue";
@@ -32,22 +33,21 @@ const display = useDisplay();
 
 const { tableFilterRef, tableWaitFilterRef, tableFilterFn } = tableCustomFilter;
 
-const tableHeader = computed(
-  () =>
-    [
-      { title: t("common.site"), key: "siteId", align: "center" },
-      {
-        title: t("DownloadHistory.table.title"),
-        key: "title",
-        align: "start",
-        minWidth: "30rem",
-        ...(display.smAndDown.value ? { maxWidth: "32vw" } : {}),
-      },
-      { title: t("DownloadHistory.table.downloader"), key: "downloaderId", width: "11%", align: "start" },
-      { title: t("DownloadHistory.table.downloadAt"), key: "downloadAt", align: "center" },
-      { title: t("DownloadHistory.table.status"), key: "downloadStatus" },
-      { title: t("common.action"), key: "action", align: "center", sortable: false },
-    ] as DataTableHeader[],
+const tableHeader = computed(() =>
+  useTableActionColumn([
+    { title: t("common.site"), key: "siteId", align: "center" },
+    {
+      title: t("DownloadHistory.table.title"),
+      key: "title",
+      align: "start",
+      minWidth: "30rem",
+      ...(display.smAndDown.value ? { maxWidth: "32vw" } : {}),
+    },
+    { title: t("DownloadHistory.table.downloader"), key: "downloaderId", width: "11%", align: "start" },
+    { title: t("DownloadHistory.table.downloadAt"), key: "downloadAt", align: "center" },
+    { title: t("DownloadHistory.table.status"), key: "downloadStatus" },
+    { title: t("common.action"), key: "action", align: "center", sortable: false },
+  ] as DataTableHeader[]),
 );
 const tableSelected = ref<TTorrentDownloadKey[]>([]);
 
@@ -101,7 +101,7 @@ onUnmounted(() => {
   <v-alert :title="t('route.Overview.DownloadHistory')" type="info" />
   <v-card>
     <v-card-title>
-      <v-row class="ma-0">
+      <v-row gap="0" class="ma-0">
         <!-- 按钮组 -->
         <NavButton
           color="green"
@@ -233,6 +233,12 @@ onUnmounted(() => {
   <v-dialog v-model="showDownloadDetailDialog" width="800">
     <v-card>
       <v-card-text>
+        <v-alert v-if="downloadDetail.errorMessage" class="mb-3" color="error" icon="mdi-alert" variant="tonal">
+          <div class="text-label-large font-weight-bold mb-1">
+            {{ t("DownloadHistory.detail.errorMessage") }}
+          </div>
+          <code class="text-body-medium">{{ downloadDetail.errorMessage }}</code>
+        </v-alert>
         <pre> {{ JSON.stringify(downloadDetail, null, 2) }}</pre>
       </v-card-text>
     </v-card>

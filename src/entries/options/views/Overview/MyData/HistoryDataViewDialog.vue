@@ -1,15 +1,17 @@
 <script setup lang="ts">
-import { ref, shallowRef } from "vue";
+import { computed, ref, shallowRef } from "vue";
 import { useI18n } from "vue-i18n";
 import { saveAs } from "file-saver";
 import { EResultParseStatus, type IUserInfo, type TSiteID } from "@ptd/site";
 import type { DataTableHeader } from "vuetify";
 
 import { sendMessage } from "@/messages.ts";
-import { formatNumber, formatSize, formatDate } from "@/options/utils.ts";
+import { formatSize, formatDate } from "@/options/utils.ts";
+import { useTableActionColumn } from "@/options/directives/useTableActionColumn.ts";
 import { formatRatio } from "./utils/format.ts";
 import { loadSiteHistoryData } from "./utils/lastUserData.ts";
 
+import BonusFormatSpan from "./BonusFormatSpan.vue";
 import SiteName from "@/options/components/SiteName.vue";
 import NavButton from "@/options/components/NavButton.vue";
 
@@ -27,17 +29,19 @@ interface IShowUserInfo extends IUserInfo {
 }
 
 const siteHistoryData = shallowRef<IShowUserInfo[]>([]);
-const tableHeader = [
-  { title: t("common.date"), key: "date", align: "center" },
-  { title: t("common.username"), key: "name", align: "center", sortable: false },
-  { title: t("MyData.table.levelName"), key: "levelName", align: "start", sortable: false },
-  { title: t("MyData.table.userData"), key: "uploaded", align: "end", sortable: false },
-  { title: t("levelRequirement.ratio"), key: "ratio", align: "end", sortable: false },
-  { title: t("levelRequirement.seeding"), key: "seeding", align: "end", sortable: false },
-  { title: t("levelRequirement.seedingSize"), key: "seedingSize", align: "end", sortable: false },
-  { title: t("levelRequirement.bonus"), key: "bonus", align: "end", sortable: false },
-  { title: t("common.action"), key: "action", align: "center", width: 90, sortable: false },
-] as DataTableHeader[];
+const tableHeader = computed(() =>
+  useTableActionColumn([
+    { title: t("common.date"), key: "date", align: "center" },
+    { title: t("common.username"), key: "name", align: "center", sortable: false },
+    { title: t("MyData.table.levelName"), key: "levelName", align: "start", sortable: false },
+    { title: t("MyData.table.userData"), key: "uploaded", align: "end", sortable: false },
+    { title: t("levelRequirement.ratio"), key: "ratio", align: "end", sortable: false },
+    { title: t("levelRequirement.seeding"), key: "seeding", align: "end", sortable: false },
+    { title: t("levelRequirement.seedingSize"), key: "seedingSize", align: "end", sortable: false },
+    { title: t("levelRequirement.bonus"), key: "bonus", align: "end", sortable: false },
+    { title: t("common.action"), key: "action", align: "center", width: 90, sortable: false },
+  ] as DataTableHeader[]),
+);
 const tableSelected = ref<string[]>([]);
 
 function deleteSiteUserInfo(date: string[]) {
@@ -124,18 +128,20 @@ function afterEnter() {
 
           <!-- 上传、下载 -->
           <template #item.uploaded="{ item }">
-            <v-container>
-              <v-row class="flex-nowrap" justify="end">
+            <!-- Vuetify 4 的 v-container 自带 16px 内衬、v-row 默认 24px flex gap（相邻两个 v-row 还会再叠一条等宽的 margin-top），
+                 故与 MyData/Index.vue 一致用 py-0 pr-0 + gap="0" 还原紧凑两行；v-icon 的 small 属性在 v4 已移除，需显式写 size="small" -->
+            <v-container class="py-0 pr-0">
+              <v-row gap="0" class="justify-end flex-nowrap">
                 <span class="text-no-wrap">
                   {{ typeof item.uploaded !== "undefined" ? formatSize(item.uploaded) : "-" }}
                 </span>
-                <v-icon color="green-darken-4" icon="mdi-chevron-up" small></v-icon>
+                <v-icon color="green-darken-4" icon="mdi-chevron-up" size="small"></v-icon>
               </v-row>
-              <v-row class="flex-nowrap" justify="end">
+              <v-row gap="0" class="justify-end flex-nowrap">
                 <span class="text-no-wrap">
                   {{ typeof item.downloaded !== "undefined" ? formatSize(item.downloaded) : "-" }}
                 </span>
-                <v-icon color="red-darken-4" icon="mdi-chevron-down" small></v-icon>
+                <v-icon color="red-darken-4" icon="mdi-chevron-down" size="small"></v-icon>
               </v-row>
             </v-container>
           </template>
@@ -164,12 +170,16 @@ function afterEnter() {
 
           <!-- 魔力/积分 -->
           <template #item.bonus="{ item }">
-            <v-container>
-              <v-row justify="end" align="center">
-                <span class="text-no-wrap">{{ item.bonus ? formatNumber(item.bonus) : "-" }}</span>
+            <!-- bonus/seedingBonus 允许是站点直接给出的非数字串（如 "N/A"，见 karagarga / seedpool 等定义），
+                 formatNumber 会把它们渲染成 NaN，故与 MyData/Index.vue 一致改用 BonusFormatSpan 承载 -->
+            <v-container class="py-0 pr-0">
+              <v-row gap="0" class="align-center justify-end">
+                <BonusFormatSpan v-if="item.bonus" :num="item.bonus" />
+                <span v-else class="text-no-wrap">-</span>
               </v-row>
-              <v-row justify="end" align="center">
-                <span class="text-no-wrap">{{ item.seedingBonus ? formatNumber(item.seedingBonus) : "-" }}</span>
+              <v-row gap="0" class="align-center justify-end">
+                <BonusFormatSpan v-if="item.seedingBonus" :num="item.seedingBonus" />
+                <span v-else class="text-no-wrap">-</span>
               </v-row>
             </v-container>
           </template>

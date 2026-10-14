@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { ref } from "vue";
+import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import type { DataTableHeader } from "vuetify";
 import { getMediaServerIcon } from "@ptd/mediaServer";
 
 import { useMetadataStore } from "@/options/stores/metadata.ts";
 import { useConfigStore } from "@/options/stores/config.ts";
+import { useTableActionColumn } from "@/options/directives/useTableActionColumn.ts";
 import type { TDownloaderKey, TMediaServerKey } from "@/shared/types.ts";
 
 import AddDialog from "./AddDialog.vue";
@@ -21,13 +22,15 @@ const showAddDialog = ref<boolean>(false);
 const showEditDialog = ref<boolean>(false);
 const showDeleteDialog = ref<boolean>(false);
 
-const fullTableHeader = [
-  { title: t("common.type"), key: "type", align: "center" },
-  { title: t("SetDownloader.common.name"), key: "name", align: "start" },
-  { title: t("SetDownloader.common.address"), key: "address", align: "start" },
-  { title: t("SetDownloader.index.table.enabled"), key: "enabled", align: "center" },
-  { title: t("common.action"), key: "action", sortable: false },
-] as DataTableHeader[];
+const fullTableHeader = computed(() =>
+  useTableActionColumn([
+    { title: t("common.type"), key: "type", align: "center" },
+    { title: t("SetDownloader.common.name"), key: "name", align: "start" },
+    { title: t("SetDownloader.common.address"), key: "address", align: "start" },
+    { title: t("SetDownloader.index.table.enabled"), key: "enabled", align: "center" },
+    { title: t("common.action"), key: "action", sortable: false },
+  ] as DataTableHeader[]),
+);
 const tableSelected = ref<TMediaServerKey[]>([]);
 
 const toEditMediaServerId = ref<TDownloaderKey | null>(null);
@@ -51,7 +54,7 @@ async function confirmDeleteMediaServer(mediaServerId: TMediaServerKey) {
   <v-alert :title="t('route.Settings.SetMediaServer')" type="info" />
   <v-card class="set-media-server">
     <v-card-title>
-      <v-row class="ma-0">
+      <v-row gap="0" class="ma-0">
         <NavButton :text="t('common.btn.add')" color="success" icon="mdi-plus" @click="showAddDialog = true" />
         <NavButton
           :disabled="tableSelected.length === 0"

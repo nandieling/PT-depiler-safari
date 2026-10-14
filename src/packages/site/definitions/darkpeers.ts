@@ -1,3 +1,6 @@
+/**
+ * @JackettDefinitions https://github.com/Jackett/Jackett/blob/master/src/Jackett.Common/Definitions/darkpeers.yml
+ */
 import type { ISiteMetadata } from "../types";
 import { CategoryFree, SchemaMetadata } from "../schemas/Unit3D.ts";
 import { buildCategoryOptionsFromDict } from "../utils.ts";
@@ -26,7 +29,7 @@ export const siteMetadata: ISiteMetadata = {
   type: "private",
   schema: "Unit3D",
 
-  urls: ["https://darkpeers.org/"],
+  urls: ["uggcf://qnexcrref.bet/"],
   favicon: "https://darkpeers.org/favicon.ico",
 
   category: [

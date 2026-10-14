@@ -1,3 +1,6 @@
+/**
+ * @PTPPDefinitions https://github.com/pt-plugins/PT-Plugin-Plus/blob/dev/resource/sites/pt.hdbd.us/config.json
+ */
 import type { ISiteMetadata } from "../types";
 
 export const siteMetadata: ISiteMetadata = {
@@ -12,7 +15,7 @@ export const siteMetadata: ISiteMetadata = {
   type: "private",
   schema: "NexusPHP",
 
-  urls: ["https://pt.hdbd.us/"],
+  urls: ["uggcf://cg.uqoq.hf/"],
 
   isDead: true,
 };

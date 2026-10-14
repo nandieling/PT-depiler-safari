@@ -1,3 +1,8 @@
+/**
+ * @JackettDefinitions https://github.com/Jackett/Jackett/blob/master/src/Jackett.Common/Indexers/Definitions/MTeamTp.cs
+ * @PDSDefinitions https://github.com/mantou568/pre-dessert-sites/blob/main/site_config/sites/mteam.json
+ * @PTMDefinitions https://github.com/JustLookAtNow/pt_mate/blob/master/assets/sites/mteam.json
+ */
 import type { AxiosRequestConfig, AxiosResponse } from "axios";
 import { set } from "es-toolkit/compat";
 import { build as buildDouban } from "@ptd/social/entity/douban.ts";
@@ -163,15 +168,14 @@ export const siteMetadata: ISiteMetadata = {
   type: "private",
   schema: "mTorrent",
 
-  urls: ["uggcf://xc.z-grnz.pp/", "uggcf://mc.z-grnz.vb/", "uggcf://bo.z-grnz.pp/"],
+  urls: ["uggcf://xc.z-grnz.pp/", "uggcf://mc.z-grnz.vb/", "uggcf://bo.z-grnz.pp/", "uggcf://u5.z-grnz.pp/"],
   legacyUrls: [
-    "https://h5.m-team.cc/",
-    "https://xp.m-team.io/",
-    "https://pt.m-team.cc/",
-    "https://tp.m-team.cc/",
-    "https://xp.m-team.cc/",
-    "https://ap.m-team.cc/",
-    "https://next.m-team.cc/",
+    "uggcf://kc.z-grnz.vb/",
+    "uggcf://cg.z-grnz.pp/",
+    "uggcf://gc.z-grnz.pp/",
+    "uggcf://kc.z-grnz.pp/",
+    "uggcf://nc.z-grnz.pp/",
+    "uggcf://arkg.z-grnz.pp/",
   ],
 
   category: [

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { computed } from "vue";
 import { useI18n } from "vue-i18n";
 
 import { supportTheme } from "@/shared/types.ts";
@@ -11,6 +12,11 @@ import { isEmpty } from "es-toolkit/compat";
 const { t } = useI18n();
 const configStore = useConfigStore();
 const metadataStore = useMetadataStore();
+
+const tableActionColumnPositionItems = computed(() => [
+  { title: t("SetBase.ui.tableActionColumnPositionStart"), value: "start" as const },
+  { title: t("SetBase.ui.tableActionColumnPositionEnd"), value: "end" as const },
+]);
 
 function initContentScriptExceptionSites() {
   Object.keys(metadataStore.sites).forEach((site) => {
@@ -46,11 +52,11 @@ defineExpose({
       <!-- 明亮模式设置 -->
       <v-select v-model="configStore.theme" :label="t('SetBase.ui.displayMode.index')" :items="supportTheme">
         <template #selection="{ item }">
-          {{ t("SetBase.ui.displayMode." + item.raw) }}
+          {{ t("SetBase.ui.displayMode." + item) }}
         </template>
 
         <template #item="{ item, props }">
-          <v-list-item v-bind="props" :title="t('SetBase.ui.displayMode.' + item.raw)" />
+          <v-list-item v-bind="props" :title="t('SetBase.ui.displayMode.' + item)" />
         </template>
       </v-select>
 
@@ -60,6 +66,32 @@ defineExpose({
         hide-details
         :label="t('SetBase.ui.showReleaseNote')"
       />
+
+      <v-switch
+        v-model="configStore.autoToggleNavBarOnDisplayChange"
+        color="success"
+        hide-details
+        :label="t('SetBase.ui.autoToggleNavBarOnDisplayChange')"
+      >
+        <template #append>
+          <v-tooltip max-width="400" location="bottom">
+            <template v-slot:activator="{ props }">
+              <v-icon color="info" icon="mdi-help-circle" v-bind="props" />
+            </template>
+            {{ t("SetBase.ui.autoToggleNavBarOnDisplayChangeNote") }}
+          </v-tooltip>
+        </template>
+      </v-switch>
+
+      <v-divider />
+    </v-col>
+  </v-row>
+
+  <v-row>
+    <v-col md="10" lg="8">
+      <div class="d-flex align-center">
+        <v-label>{{ t("SetBase.ui.dataTable") }}</v-label>
+      </div>
 
       <v-switch
         v-model="configStore.saveTableBehavior"
@@ -84,6 +116,28 @@ defineExpose({
         </template>
       </v-switch>
 
+      <v-select
+        v-model="configStore.tableActionColumnPosition"
+        :items="tableActionColumnPositionItems"
+        :label="t('SetBase.ui.tableActionColumnPosition')"
+      />
+
+      <v-switch
+        v-model="configStore.tableActionColumnFixed"
+        color="success"
+        hide-details
+        :label="t('SetBase.ui.tableActionColumnFixed')"
+      >
+        <template #append>
+          <v-tooltip max-width="400" location="bottom">
+            <template v-slot:activator="{ props }">
+              <v-icon color="info" icon="mdi-help-circle" v-bind="props" />
+            </template>
+            {{ t("SetBase.ui.tableActionColumnFixedNote") }}
+          </v-tooltip>
+        </template>
+      </v-switch>
+
       <v-divider />
     </v-col>
   </v-row>
@@ -104,7 +158,7 @@ defineExpose({
       <template v-if="configStore.contentScript.enabled">
         <v-alert type="warning" variant="tonal"> {{ t("SetBase.ui.contentScriptWarning") }} </v-alert>
 
-        <v-row dense>
+        <v-row density="compact">
           <v-col cols="12" md="2" class="d-flex align-center justify-center">
             <v-label>{{ t("SetBase.ui.basicSettings") }}</v-label>
           </v-col>
@@ -127,7 +181,7 @@ defineExpose({
           </v-col>
         </v-row>
 
-        <v-row dense>
+        <v-row density="compact">
           <v-col cols="12" md="2" class="d-flex align-center justify-center">
             <v-label>{{ t("SetBase.ui.sidebarStyle") }}</v-label>
           </v-col>
@@ -161,7 +215,7 @@ defineExpose({
           </v-col>
         </v-row>
 
-        <v-row dense>
+        <v-row density="compact">
           <v-col cols="12" md="2" class="d-flex align-center justify-center">
             <v-label>{{ t("SetBase.ui.sidebarFunctions") }}</v-label>
           </v-col>

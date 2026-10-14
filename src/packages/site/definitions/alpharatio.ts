@@ -1,5 +1,6 @@
 /**
  * @JackettDefinitions https://github.com/Jackett/Jackett/blob/master/src/Jackett.Common/Indexers/Definitions/AlphaRatio.cs
+ * @PTPPDefinitions https://github.com/pt-plugins/PT-Plugin-Plus/blob/dev/resource/sites/alpharatio.cc/config.json
  */
 import type { ISiteMetadata, ITorrent, IUserInfo, TSearchRequestConfigTransformer } from "../types";
 import GazelleJSONAPI, { SchemaMetadata, torrentBrowseResult } from "../schemas/GazelleJSONAPI";
@@ -29,7 +30,7 @@ export const siteMetadata: ISiteMetadata = {
   type: "private",
   schema: "GazelleJSONAPI",
 
-  urls: ["https://alpharatio.cc/"],
+  urls: ["uggcf://nycunengvb.pp/"],
 
   category: [
     {
