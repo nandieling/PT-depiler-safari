@@ -10,6 +10,7 @@ import { isDebug, REPO_URL } from "~/helper.ts";
 
 const git = __GIT_VERSION__;
 const ext_version = __EXT_VERSION__;
+const upstream = __UPSTREAM_COMMIT__;
 const year = new Date().getFullYear();
 
 const { t } = useI18n();
@@ -72,6 +73,14 @@ const menuOptions = routes
           <span class="pa-2 text-grey-darken-1">
             &copy; {{ year }},
             <a :href="`${REPO_URL}${git.long ? `/commit/${git.long}` : ''}`" target="_blank">{{ ext_version }}</a>
+            <template v-if="upstream.long">&middot;</template>
+            <a
+              v-if="upstream.long"
+              :href="`${REPO_URL}/commit/${upstream.long}`"
+              :title="t('layout.upstreamCommitHint')"
+              target="_blank"
+              >{{ t("layout.upstreamCommit", { commit: upstream.short }) }}</a
+            >
             <v-chip v-if="isDebug" class="pa-1 ml-1 mb-1" color="amber" label size="x-small">
               {{ t("common.test") }}
             </v-chip>

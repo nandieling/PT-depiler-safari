@@ -37,8 +37,21 @@ const optionalPermissions = ["nativeMessaging"];
 
 // @ts-ignore
 const git_count = git.count("HEAD");
-const base_version = `${pkg.version}.${git_count}`;
+
+// Safari 移植版使用自己的版本号（package.json 的 version），上游基线另见 __UPSTREAM_COMMIT__
+const base_version: string = pkg.version;
 const commit_version = `${base_version}+${git.short(__dirname)}`;
+
+/** 最近一次同步到的上游提交，记录在 .upstream-synced；读不到时留空 */
+function syncedUpstreamCommit(): string {
+  try {
+    return fs.readFileSync(base_path(".upstream-synced"), "utf8").trim();
+  } catch {
+    return "";
+  }
+}
+
+const upstream_commit = syncedUpstreamCommit();
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -333,6 +346,10 @@ export default defineConfig({
       count: git_count,
       branch: git.branch(__dirname),
     },
+    __UPSTREAM_COMMIT__: JSON.stringify({
+      short: upstream_commit.slice(0, 8),
+      long: upstream_commit,
+    }),
     __BUILD_TIME__: +Date.now(),
     __RESOURCE_SITE_ICONS__: fs.readdirSync(base_path("./public/icons/site")),
   },

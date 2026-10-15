@@ -86,10 +86,18 @@ for resource in "${required_resources[@]}"; do
   fi
 done
 
-BUNDLE_ID="${bundle_id}" DEPLOYMENT_TARGET="${deployment_target}" perl -0pi -e '
+# App 版本号跟随 package.json，避免 Xcode 工程里的 MARKETING_VERSION 和扩展版本各说各话
+app_version="$(cd "${repo_dir}" && node -p "require('./package.json').version")"
+if [[ ! "${app_version}" =~ ^[0-9]+(\.[0-9]+){0,2}$ ]]; then
+  echo "error: package.json version '${app_version}' is not a valid macOS bundle version." >&2
+  exit 1
+fi
+
+BUNDLE_ID="${bundle_id}" DEPLOYMENT_TARGET="${deployment_target}" MARKETING_VERSION="${app_version}" perl -0pi -e '
   s/PRODUCT_BUNDLE_IDENTIFIER = [^;]*Extension;/PRODUCT_BUNDLE_IDENTIFIER = $ENV{BUNDLE_ID}.Extension;/g;
   s/PRODUCT_BUNDLE_IDENTIFIER = (?![^;]*Extension)[^;]+;/PRODUCT_BUNDLE_IDENTIFIER = $ENV{BUNDLE_ID};/g;
   s/MACOSX_DEPLOYMENT_TARGET = [0-9.]+;/MACOSX_DEPLOYMENT_TARGET = $ENV{DEPLOYMENT_TARGET};/g;
+  s/MARKETING_VERSION = [^;]+;/MARKETING_VERSION = $ENV{MARKETING_VERSION};/g;
 ' "${project_file}"
 
 echo "Safari project: ${project_file%/project.pbxproj}"

@@ -1222,6 +1222,8 @@
     "localDownload": "Local Download"
   },
   "layout": {
+    "upstreamCommit": "upstream {commit}",
+    "upstreamCommitHint": "This port is synced from this upstream PT-depiler commit",
     "header": {
       "emptySearchNotice": "Get the first page of each tracker",
       "expand": "Expand More",

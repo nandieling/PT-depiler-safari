@@ -12,5 +12,6 @@ interface ImportMeta {
 declare const __BROWSER__: "chrome" | "firefox" | "safari";
 declare const __EXT_VERSION__: string;
 declare const __GIT_VERSION__: { short: string; long: string; date: number; count: number; branch: string };
+declare const __UPSTREAM_COMMIT__: { short: string; long: string };
 declare const __BUILD_TIME__: string;
 declare const __RESOURCE_SITE_ICONS__: string[];

@@ -1219,6 +1219,8 @@
     "localDownload": "本地下载"
   },
   "layout": {
+    "upstreamCommit": "上游基线 {commit}",
+    "upstreamCommitHint": "本移植版同步自上游 PT-depiler 的这次提交",
     "header": {
       "emptySearchNotice": "获取各站第一页种子",
       "expand": "展开更多",

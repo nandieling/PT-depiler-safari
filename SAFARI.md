@@ -18,6 +18,8 @@ open safari-project/PT-Depiler/PT-Depiler.xcodeproj
 
 The command builds the web extension, syncs it into the checked-in macOS Safari Web Extension template, and performs an unsigned Xcode build. In Xcode, select a Development Team for both targets and run the `PT-Depiler` scheme. Then enable PT-Depiler in Safari's extension settings and grant access to the required websites.
 
+The release version lives in `version` in `package.json`. `pnpm build:safari-app` writes it into the web extension manifest and into `MARKETING_VERSION` of the generated Xcode project, so that single field is the only thing to bump for a release; upstream's own version is not used. The options UI footer shows this version next to `upstream <sha>`, which is the upstream commit recorded in `.upstream-synced`.
+
 Use a different bundle identifier when needed:
 
 ```bash
