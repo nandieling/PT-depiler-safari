@@ -13,6 +13,7 @@ export const siteMetadata: ISiteMetadata = {
   version: 4,
   id: "zmpt",
   name: "织梦",
+  tags: ["综合", "影视", "音乐", "游戏"],
   aka: ["织梦PT", "ZMPT"],
   description: "为爱启航，造就梦想！",
   timezoneOffset: "+0800",
@@ -113,9 +114,9 @@ export const siteMetadata: ISiteMetadata = {
   officialGroupPattern: ["ZmWeb", "ZmPT", "ZmMusic", "ZmAudio"],
 
   userInfo: {
-    ...SchemaMetadata.userInfo!,
+    ...SchemaMetadata.userInfo,
     selectors: {
-      ...SchemaMetadata.userInfo!.selectors!,
+      ...SchemaMetadata.userInfo.selectors!,
       bonus: {
         selector: ["td.rowhead:contains('电力值') + td"],
         filters: [{ name: "parseNumber" }],

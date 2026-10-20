@@ -3,22 +3,45 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import ts from "typescript";
 
+import { INDEXED_METADATA_FIELDS, pickSiteMetadataIndexEntry } from "../../src/packages/site/utils/metadataIndex.ts";
+import type { ISiteMetadata } from "../../src/packages/site/types/site.ts";
+
 /**
  * 站点定义静态校验（跑在 `pnpm check` 里，**不在构建里** —— 构建只负责编译，校验属于 check 阶段）。
  *
- * 两件事：
+ * 五件事：
  *  1. **结构检查**：`export const siteMetadata` 里那些「写错了也不会报错、只会静默失效」的地方
  *     （id 与文件名不符、category 的 key 重复、levelRequirements 的 id 重复/非递增、urls 不是地址……）；
  *  2. **正则编译检查**：会被 `new RegExp(pattern, "i")` 编译的字段（`TPatterns`）里的字符串字面量，
  *     编译不过就直接失败 —— 它们在打包期本来完全不被检查，坏一个括号要等运行到那行才抛，
- *     而调用点通常在 `.some()` 回调里，会把整页列表解析带崩。
+ *     而调用点通常在 `.some()` 回调里，会把整页列表解析带崩；
+ *  3. **过滤器名检查**：`filters` / `switchFilters` 里 `{ name: "xxx" }` 的名字必须存在于 `definedFilters`
+ *     —— 写错的名字会被 `runQueryFilters` 静默跳过，只给出错值；
+ *  4. **favicon 守卫**：`favicon` 字段用远端地址要提醒（本地资产优先且更稳），显式 `"./x"` 引用的
+ *     文件必须存在，且本地图标不应超过 256x256（站点图标实际只显示 14~36px）；
+ *  5. **索引字段契约**（全量模式才跑）：`INDEXED_METADATA_FIELDS` 与 `pickSiteMetadataIndexEntry()`
+ *     必须一致 —— 详见 `checkMetadataIndexContract()`。
  *
- * 规则来源：`src/packages/site/index.ts`（加载与回落）、`types/site.ts`、`types/search.ts`。
+ * 规则来源：`src/packages/site/index.ts`（加载与回落）、`types/site.ts`、`types/search.ts`、
+ * `utils/metadataIndex.ts`（索引字段契约）、`utils/favicon.ts`（favicon 查找顺序）、
+ * `utils/filter.ts`（可用过滤器名单）。
  * 用法：`pnpm check`（顺带跑）/ `pnpm check:site-definition`（只跑本项）/ 加文件参数只校验指定定义。
  * 错误（error）让命令以非 0 退出；警告与提示不影响退出码。
  */
 const DEFINITIONS_DIR = "src/packages/site/definitions";
 const SCHEMAS_DIR = "src/packages/site/schemas";
+/** 索引字段契约涉及的文件：`INDEXED_METADATA_FIELDS` 与抽取函数都在这里，报告时挂到它名下 */
+const METADATA_INDEX_FILE = "src/packages/site/utils/metadataIndex.ts";
+/** 本地站点图标目录（与 vite.config.ts 里注入的 `__RESOURCE_SITE_ICONS__` 同源） */
+const ICONS_DIR = "public/icons/site";
+/** 具名过滤器表：`filters: [{ name }]` 里的名字必须取自这里 */
+const FILTER_FILE = "src/packages/site/utils/filter.ts";
+/**
+ * 本地图标的尺寸上限。
+ * 站点图标在界面里的实际显示尺寸只有 14~36px（components/SiteFavicon/Index.vue 的 `size` prop），
+ * 超过这个边长基本只能说明资产没压过（历史上出现过多达 512x512 / 264KB 的 favicon，占整包体积 41%）。
+ */
+const MAX_LOCAL_ICON_DIM = 256;
 
 /** 会被 `new RegExp(pattern, "i")` 编译的字段（类型里的 `TPatterns`） */
 const PATTERN_FIELDS = new Set([
@@ -137,6 +160,96 @@ function urlHost(url: string): string | undefined {
   return host.startsWith("www.") ? host.slice(4) : host;
 }
 
+/* ---------------------------------- 图标工具 --------------------------------- */
+
+/**
+ * 本地图标的候选路径，顺序与 `site/utils/favicon.ts:213-231` 一致：
+ * `favicon` 字段以 `"./"` 开头时该文件排在最前，否则依次是 `<id>.png` / `<id>.ico` / `<id>.svg`。
+ * （`favicon` 是 http 地址或 data URI 时，本地候选仍然会被先命中，只是这份名单里不含它。）
+ */
+function localIconCandidates(siteId: string, favicon: string | undefined): string[] {
+  const byId = [`${siteId}.png`, `${siteId}.ico`, `${siteId}.svg`];
+  return favicon?.startsWith("./") ? [favicon.slice(2), ...byId] : byId;
+}
+
+/**
+ * 只读文件头解析图片尺寸（PNG / ICO / JPEG / GIF / WebP / SVG 的显式 width/height）。
+ * 识别不出来的格式返回 null —— 调用方按「跳过」处理，不产生误报。
+ */
+function readImageSize(file: string): { width: number; height: number } | null {
+  let buf: Buffer;
+  try {
+    buf = fs.readFileSync(file);
+  } catch {
+    return null;
+  }
+
+  // PNG：IHDR 里的宽高
+  if (buf.length >= 24 && buf.toString("latin1", 1, 4) === "PNG") {
+    return { width: buf.readUInt32BE(16), height: buf.readUInt32BE(20) };
+  }
+
+  // ICO：取所有帧里最大的声明尺寸（目录项里 0 表示 256）
+  if (buf.length >= 22 && buf.readUInt16LE(0) === 0 && buf.readUInt16LE(2) === 1) {
+    let width = 0;
+    let height = 0;
+    const count = buf.readUInt16LE(4);
+    for (let i = 0; i < count; i++) {
+      const offset = 6 + i * 16;
+      if (offset + 16 > buf.length) break;
+      width = Math.max(width, buf[offset] === 0 ? 256 : buf[offset]);
+      height = Math.max(height, buf[offset + 1] === 0 ? 256 : buf[offset + 1]);
+    }
+    return width && height ? { width, height } : null;
+  }
+
+  // GIF
+  if (buf.length >= 10 && buf.toString("latin1", 0, 3) === "GIF") {
+    return { width: buf.readUInt16LE(6), height: buf.readUInt16LE(8) };
+  }
+
+  // WebP：VP8X / VP8L / VP8 三种块头的宽高编码各不相同
+  if (buf.length >= 30 && buf.toString("latin1", 0, 4) === "RIFF" && buf.toString("latin1", 8, 12) === "WEBP") {
+    const chunk = buf.toString("latin1", 12, 16);
+    if (chunk === "VP8X") return { width: buf.readUIntLE(24, 3) + 1, height: buf.readUIntLE(27, 3) + 1 };
+    if (chunk === "VP8L") {
+      const bits = buf.readUInt32LE(21);
+      return { width: (bits & 0x3fff) + 1, height: ((bits >> 14) & 0x3fff) + 1 };
+    }
+    if (chunk === "VP8 ") return { width: buf.readUInt16LE(26) & 0x3fff, height: buf.readUInt16LE(28) & 0x3fff };
+  }
+
+  // JPEG：扫到 SOFn 段取宽高
+  if (buf.length >= 4 && buf[0] === 0xff && buf[1] === 0xd8) {
+    let i = 2;
+    while (i + 9 < buf.length) {
+      if (buf[i] !== 0xff) {
+        i++;
+        continue;
+      }
+      const marker = buf[i + 1];
+      if (marker >= 0xc0 && marker <= 0xcf && marker !== 0xc4 && marker !== 0xc8 && marker !== 0xcc) {
+        return { width: buf.readUInt16BE(i + 7), height: buf.readUInt16BE(i + 5) };
+      }
+      if (marker === 0xd8 || (marker >= 0xd0 && marker <= 0xd9)) {
+        i += 2;
+        continue;
+      }
+      i += 2 + buf.readUInt16BE(i + 2);
+    }
+  }
+
+  // SVG：矢量没有固有像素尺寸，只认显式 width/height（读不到就跳过）
+  const head = buf.toString("utf8", 0, Math.min(buf.length, 2000));
+  if (head.includes("<svg")) {
+    const width = head.match(/\bwidth\s*=\s*["']?(\d+(?:\.\d+)?)/i);
+    const height = head.match(/\bheight\s*=\s*["']?(\d+(?:\.\d+)?)/i);
+    if (width && height) return { width: Math.round(Number(width[1])), height: Math.round(Number(height[1])) };
+  }
+
+  return null;
+}
+
 /* ---------------------------------- 单文件检查 --------------------------------- */
 
 interface IFileResult {
@@ -171,6 +284,123 @@ function checkPatterns(file: string): { errors: string[]; count: number } {
             errors.push(
               `${rel}:${line + 1}  ${field} = ${JSON.stringify(literal.text)} 无法编译：${e instanceof Error ? e.message : e}`,
             );
+          }
+        }
+      }
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(source);
+
+  return { errors, count };
+}
+
+/** 承载 `TQueryFilter` 的字段（types/search.ts:291-292） */
+const FILTER_FIELDS = new Set(["filters", "switchFilters"]);
+
+/**
+ * 静态读出 `definedFilters` 的键名。
+ *
+ * ⚠️ 这里**不能** `import` filter.ts：它的依赖链（`@ptd/social`）在模块顶层用了 `import.meta.glob`，
+ * 那是 Vite 的能力，`tsx`/Node 下会直接抛 `(intermediate value).glob is not a function`
+ * —— 而 `pnpm check` 跑的正是 tsx。所以与 pattern 检查一样走 AST。
+ *
+ * 读不到名单时**抛错**而不是返回空数组：否则「一条都没扫到」会伪装成「全部通过」
+ * （这正是上一轮复核里给守卫定的三条反误报判据之一）。
+ */
+function readDefinedFilterNames(): string[] {
+  const file = path.resolve(process.cwd(), FILTER_FILE);
+  const source = ts.createSourceFile(
+    file,
+    fs.readFileSync(file, "utf8"),
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TS,
+  );
+  for (const stmt of source.statements) {
+    if (!ts.isVariableStatement(stmt)) continue;
+    if (!(stmt.modifiers ?? []).some((m) => m.kind === ts.SyntaxKind.ExportKeyword)) continue;
+    for (const decl of stmt.declarationList.declarations) {
+      if (readName(decl.name) !== "definedFilters") continue;
+      const init = unwrap(decl.initializer); // 外面可能包着 satisfies Record<string, TQueryFilterFn>
+      if (!init || !ts.isObjectLiteralExpression(init)) continue;
+      const names = init.properties.map((p) => readName(p.name)).filter((n): n is string => !!n);
+      if (names.length === 0) throw new Error(`${FILTER_FILE} 里的 definedFilters 解析为空，过滤器名检查无法进行`);
+      return names;
+    }
+  }
+  throw new Error(`在 ${FILTER_FILE} 里找不到 \`export const definedFilters = { ... }\`，过滤器名检查无法进行`);
+}
+
+let definedFilterNamesCache: string[] | null = null;
+function definedFilterNames(): string[] {
+  return (definedFilterNamesCache ??= readDefinedFilterNames());
+}
+
+/**
+ * 过滤器名检查：`{ name: "xxx" }` 里的名字必须存在于 `definedFilters`。
+ *
+ * 这是**第二层**守卫：第一层是 `filter.ts` 的类型（`satisfies Record<string, TQueryFilterFn>`，
+ * 见那里的注释）—— 它能在编译期拦住「写在有类型上下文的位置」的错名（本次改造就是这样一次性暴露出
+ * 16 处问题的）。这一层覆盖编译期看不到的情况：`any` 边界、动态拼出来的配置对象，
+ * 以及单跑 `pnpm check:site-definition`（不经过 vue-tsc）时的兜底；错误信息也更直白（直接列出可用名字）。
+ *
+ * 为什么值得是 error：`runQueryFilters`（AbstractBittorrentSite.ts:461-475）对不存在的名字**静默跳过**，
+ * 「过滤器没生效」既不报错也不告警，只会给出错值 —— broadcasthenet 的 `bonusPerHour` 就因为写了
+ * 并不存在的 `divide` 而偏高 24 倍。
+ */
+function checkFilters(file: string): { errors: string[]; count: number } {
+  const errors: string[] = [];
+  let count = 0;
+  const source = ts.createSourceFile(
+    file,
+    fs.readFileSync(file, "utf8"),
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TS,
+  );
+  const rel = path.relative(process.cwd(), file).replace(/\\/g, "/");
+
+  const checkOne = (node: ts.Expression) => {
+    const obj = unwrap(node);
+    // 函数式过滤器 / 常量引用 / 展开：静态看不出名字，交给类型系统
+    if (!obj || !ts.isObjectLiteralExpression(obj)) return;
+    const nameNode = getProp(obj, "name");
+    if (!nameNode) return;
+    count++;
+    const name = asString(nameNode);
+    if (name === undefined) return; // 名字不是字面量（动态拼接），静态查不了
+    const names = definedFilterNames();
+    if (!names.includes(name)) {
+      const { line } = source.getLineAndCharacterOfPosition(nameNode.getStart(source));
+      errors.push(
+        `${rel}:${line + 1}  filters 里的 name "${name}" 不在 definedFilters 中；` +
+          `运行时会被 runQueryFilters 静默跳过（可用：${names.join(" / ")}）`,
+      );
+    }
+  };
+
+  const checkArray = (node: ts.Expression) => {
+    const arr = unwrap(node);
+    if (arr && ts.isArrayLiteralExpression(arr)) arr.elements.forEach(checkOne);
+  };
+
+  const visit = (node: ts.Node) => {
+    if (ts.isPropertyAssignment(node)) {
+      const field = readName(node.name);
+      if (field && FILTER_FIELDS.has(field)) {
+        const init = unwrap(node.initializer);
+        if (init && ts.isArrayLiteralExpression(init)) {
+          // filters: TQueryFilter[]
+          init.elements.forEach(checkOne);
+        } else if (init && ts.isObjectLiteralExpression(init)) {
+          if (field === "switchFilters") {
+            // switchFilters: Record<selector, TQueryFilter[]>
+            for (const p of init.properties) {
+              if (ts.isPropertyAssignment(p)) checkArray(p.initializer);
+            }
+          } else {
+            checkOne(init); // filters 也允许写成单个对象
           }
         }
       }
@@ -450,7 +680,131 @@ function checkSiteDefinition(file: string, seenIds: Map<string, string>, knownSc
     notes.push("isDead: true —— 按 types/site.ts:108-115 建议注释或删除其后的全部配置项");
   }
 
+  // 12. favicon：优先本地资产（远端地址与 data URI 都要提醒）；本地资产不应超过 256x256；显式引用的文件必须存在
+  const faviconNode = getProp(meta, "favicon");
+  const favicon = asString(faviconNode);
+  if (faviconNode && favicon === undefined) {
+    notes.push("favicon 不是字符串字面量，已跳过 favicon 检查");
+  } else if (favicon?.startsWith("data:image/")) {
+    warnings.push(
+      `${at(faviconNode!)}  favicon 使用内联 data URI（favicon.ts:220-221 会直接返回它）；建议落成本地资产 ` +
+        `${ICONS_DIR}/${expectedId}.png —— 内联 base64 会随定义 chunk 一起变胖，也享受不到统一的图片压缩`,
+    );
+  } else {
+    const iconsDir = path.resolve(process.cwd(), ICONS_DIR);
+
+    if (favicon !== undefined && isHttpUrl(favicon)) {
+      warnings.push(
+        `${at(faviconNode!)}  favicon 使用远端地址 "${favicon}"；建议落成本地资产 ${ICONS_DIR}/${expectedId}.png —— ` +
+          `favicon.ts:237-252 里本地资产优先于这个字段，且本地资产不受站点改版 / 防盗链 / CF 拦截影响`,
+      );
+    }
+
+    const candidates = localIconCandidates(expectedId, favicon);
+    const explicit = favicon?.startsWith("./") ? favicon.slice(2) : undefined;
+    if (explicit && !fs.existsSync(path.join(iconsDir, explicit))) {
+      errors.push(
+        `${at(faviconNode!)}  favicon "${favicon}" 指向的文件不存在（缺 ${ICONS_DIR}/${explicit}）；` +
+          `favicon.ts:227-231 会静默跳过它，最终回落到运行时抓取`,
+      );
+    }
+
+    // 真正会命中的那一个（favicon.ts 是「按顺序找第一个存在于包内的文件」）
+    const hit = candidates.find((name) => fs.existsSync(path.join(iconsDir, name)));
+    if (hit) {
+      const size = readImageSize(path.join(iconsDir, hit));
+      if (!size) {
+        notes.push(`无法解析本地图标 ${ICONS_DIR}/${hit} 的尺寸，已跳过尺寸检查`);
+      } else if (size.width > MAX_LOCAL_ICON_DIM || size.height > MAX_LOCAL_ICON_DIM) {
+        warnings.push(
+          `${rel}  本地图标 ${ICONS_DIR}/${hit} 为 ${size.width}x${size.height}，超过 ${MAX_LOCAL_ICON_DIM}x${MAX_LOCAL_ICON_DIM}；` +
+            `站点图标实际显示尺寸只有 14~36px（components/SiteFavicon/Index.vue 的 size prop），建议压到 128 以内并去掉未压缩 BMP 载荷`,
+        );
+      }
+    }
+  }
+
   return result;
+}
+
+/* ---------------------------------- 索引字段契约 --------------------------------- */
+
+/**
+ * 索引条目里除「可查询的固定属性」之外的键：都是从固定属性派生出来的标志 / 摘要。
+ * 注意 `id` **不在这里** —— 它是索引的 key，条目本身不再存一份。
+ */
+const DERIVED_ENTRY_KEYS = ["hasUserInputSettingMeta", "hasSearch", "hasUserInfo", "searchEntries"];
+
+/**
+ * 每个固定属性都给一个真值，保证抽取函数里的 `if` 全部命中。
+ * 取值只需真值性正确，所以不追求与 ISiteMetadata 的结构完全对齐，用 as 收口。
+ */
+const metadataWithEveryField = {
+  id: "check-site-metadata-index",
+  name: "Check",
+  type: "private",
+  schema: "NexusPHP",
+  isDead: true,
+  urls: ["https://example.com/"],
+  legacyUrls: ["https://legacy.example.com/"],
+  trackerUrls: ["https://tracker.example.com/announce"],
+  aka: ["别名"],
+  tags: ["综合"],
+  version: 1,
+  description: "检查用",
+  userInputSettingMeta: [{ name: "cookie", label: "Cookie", hint: "", required: true }],
+  search: { requestConfig: {} },
+  userInfo: { selectors: {} },
+  searchEntry: { default: { name: "默认" } },
+} as unknown as ISiteMetadata;
+
+export interface IMetadataIndexContractResult {
+  fixedFieldCount: number;
+  derivedKeyCount: number;
+  errors: string[];
+}
+
+/**
+ * `INDEXED_METADATA_FIELDS` 与 `pickSiteMetadataIndexEntry()` 必须一致。
+ *
+ * 索引的**值**不可能漂移 —— 每次构建都从站点定义现算（见 `vite/plugin/generateSiteIndex.ts`），
+ * 没有需要提交的生成产物。唯一会漂的是这层「字段契约」：
+ *
+ *   · 名单里有、抽取函数没写 → `metadataStore.getSiteMergedMetadata()` 会以为能从索引取到，
+ *     实际拿到 `undefined`，而且**不会回落**到完整定义（静默错值，最难查）
+ *   · 抽取函数写了、名单里没有 → 字段白白进了索引却没人能用（索引体积白涨）
+ *
+ * 光靠注释约束不住，所以在 `pnpm check` 里钉死。做法是**行为断言**而不是文本扫描：
+ * 造一个「每个固定属性都有值」的站点定义逼出抽取函数里的全部分支，再比对它实际写出的键集合。
+ *
+ * 这是全量不变量，所以单文件模式（`pnpm check:site-definition <file>`）不跑。
+ */
+export function checkMetadataIndexContract(): IMetadataIndexContractResult {
+  const written = new Set(Object.keys(pickSiteMetadataIndexEntry(metadataWithEveryField)));
+  const expected = new Set<string>([...INDEXED_METADATA_FIELDS, ...DERIVED_ENTRY_KEYS]);
+  const errors: string[] = [];
+
+  const missing = [...expected].filter((key) => !written.has(key));
+  if (missing.length > 0) {
+    errors.push(
+      `INDEXED_METADATA_FIELDS 列了但 pickSiteMetadataIndexEntry() 没写出：${missing.join(", ")}`,
+      "消费方会以为能从索引取到这些字段，实际拿到 undefined，且不会回落到完整站点定义。",
+    );
+  }
+
+  const unexpected = [...written].filter((key) => !expected.has(key));
+  if (unexpected.length > 0) {
+    errors.push(
+      `pickSiteMetadataIndexEntry() 写出了但既不在 INDEXED_METADATA_FIELDS 也不在 DERIVED_ENTRY_KEYS：${unexpected.join(", ")}`,
+      "该字段进了索引却没人能查；若它是新加的固定属性，请一并加进 INDEXED_METADATA_FIELDS。",
+    );
+  }
+
+  return {
+    fixedFieldCount: INDEXED_METADATA_FIELDS.length,
+    derivedKeyCount: DERIVED_ENTRY_KEYS.length,
+    errors,
+  };
 }
 
 /* ---------------------------------- 入口 --------------------------------- */
@@ -481,10 +835,14 @@ export interface ICheckResult {
 export interface ICheckSummary {
   definitionCount: number;
   patternCount: number;
+  /** 检查过的具名过滤器数量（`filters` / `switchFilters` 里带 `name` 的项） */
+  filterCount: number;
   results: ICheckResult[];
   errorCount: number;
   warningCount: number;
   noteCount: number;
+  /** 索引字段契约的结果；单文件模式下为 null（那是全量不变量，只在校验全部定义时查） */
+  metadataIndexContract: IMetadataIndexContractResult | null;
 }
 
 /**
@@ -511,11 +869,16 @@ export function checkSiteDefinitions(onlyFiles?: string[]): ICheckSummary {
   };
 
   let patternCount = 0;
+  let filterCount = 0;
   const sources = onlyFiles?.length ? targets : [...definitionFiles, ...schemaFiles];
   for (const file of sources) {
     const r = checkPatterns(file);
     patternCount += r.count;
     if (r.errors.length) bucket(file).errors.push(...r.errors);
+
+    const f = checkFilters(file);
+    filterCount += f.count;
+    if (f.errors.length) bucket(file).errors.push(...f.errors);
   }
   // 结构检查：全都过一遍（id 唯一性需要全集），但只收 targets 的结果
   const seenIds = new Map<string, string>();
@@ -528,18 +891,29 @@ export function checkSiteDefinitions(onlyFiles?: string[]): ICheckSummary {
     b.notes.push(...r.notes);
   }
 
+  // 索引字段契约：全量不变量，挂到抽取函数所在文件下，于是错误计数 / 报告 / 退出码都走同一套
+  let metadataIndexContract: IMetadataIndexContractResult | null = null;
+  if (!onlyFiles?.length) {
+    metadataIndexContract = checkMetadataIndexContract();
+    if (metadataIndexContract.errors.length) {
+      bucket(path.resolve(process.cwd(), METADATA_INDEX_FILE)).errors.push(...metadataIndexContract.errors);
+    }
+  }
+
   const results = [...byFile.values()].sort((a, b) => a.file.localeCompare(b.file));
   return {
     definitionCount: definitionFiles.length,
     patternCount,
+    filterCount,
     results,
     errorCount: results.reduce((n, r) => n + r.errors.length, 0),
     warningCount: results.reduce((n, r) => n + r.warnings.length, 0),
     noteCount: results.reduce((n, r) => n + r.notes.length, 0),
+    metadataIndexContract,
   };
 }
 
-/** 直接运行（`tsx vite/checkSiteDefinition.ts [file...]`）时打印报告，并按错误数设置退出码 */
+/** 直接运行（`tsx vite/scripts/checkSiteDefinition.ts [file...]`）时打印报告，并按错误数设置退出码 */
 const isMain = !!process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
 if (isMain) {
   const args = process.argv.slice(2).filter((a) => !a.startsWith("-"));
@@ -557,8 +931,17 @@ if (isMain) {
     if (single) for (const n of r.notes) console.log(`   · ${n}`);
   }
 
+  // 通过的规则在全量模式下不逐条打印，所以这里给索引字段契约一行明确的状态（失败时的细节在文件行里）
+  if (summary.metadataIndexContract) {
+    const { fixedFieldCount, derivedKeyCount, errors } = summary.metadataIndexContract;
+    console.log(
+      `${errors.length ? "✗" : "✓"}  索引字段契约（INDEXED_METADATA_FIELDS ↔ pickSiteMetadataIndexEntry）：` +
+        `${fixedFieldCount} 个固定属性 + ${derivedKeyCount} 个派生标志`,
+    );
+  }
+
   console.log(
-    `\n检查 ${summary.definitionCount} 个定义、${summary.patternCount} 条 pattern：` +
+    `\n检查 ${summary.definitionCount} 个定义、${summary.patternCount} 条 pattern、${summary.filterCount} 个具名过滤器：` +
       `${summary.errorCount} 个错误，${summary.warningCount} 个警告，${summary.noteCount} 条提示`,
   );
   process.exit(summary.errorCount > 0 ? 1 : 0);

@@ -1,12 +1,14 @@
 /**
  * @JackettDefinitions https://github.com/Jackett/Jackett/blob/master/src/Jackett.Common/Definitions/digitalcore-api.yml
  */
-import type { ISiteMetadata } from "../types";
+import type { IElementQuery, ISiteMetadata } from "../types";
 import { get } from "es-toolkit/compat";
 import { buildCategoryOptionsFromDict } from "../utils";
 import Rartracker from "../schemas/Rartracker";
 import { SchemaMetadata } from "../schemas/Rartracker";
 
+// satisfies 而不是省略：没有类型上下文时 `name: "split"` 会被拓宽成 string，
+// 于是 filters 不再是 TQueryFilter[]（类型检查也就失去意义）
 const commonDocumentSelectors = {
   rows: { selector: "torrents-table[torrents] > table > tbody > tr" },
   id: {
@@ -16,7 +18,7 @@ const commonDocumentSelectors = {
   },
   url: { selector: "a[title]", attr: "href" },
   title: { selector: "a[title]", attr: "title" },
-};
+} satisfies Record<string, IElementQuery>;
 
 const levelIdMap: Record<number, string> = {
   0: "Rogue",
@@ -123,9 +125,9 @@ export const siteMetadata: ISiteMetadata = {
   search: {
     ...SchemaMetadata.search,
     requestConfig: {
-      ...SchemaMetadata.search!.requestConfig,
+      ...SchemaMetadata.search.requestConfig,
       params: {
-        ...SchemaMetadata.search!.requestConfig!.params,
+        ...SchemaMetadata.search.requestConfig!.params,
         dead: true,
         extendedDead: true,
         page: "search",
@@ -133,7 +135,7 @@ export const siteMetadata: ISiteMetadata = {
       },
     },
     selectors: {
-      ...SchemaMetadata.search!.selectors,
+      ...SchemaMetadata.search.selectors,
       subTitle: { selector: "tagline" },
       completed: { selector: "times_completed" },
       category: {
@@ -190,17 +192,17 @@ export const siteMetadata: ISiteMetadata = {
     pickLast: ["id", "name", "joinTime"],
     process: [
       {
-        ...SchemaMetadata.userInfo!.process![0],
+        ...SchemaMetadata.userInfo.process![0],
         selectors: {
-          ...SchemaMetadata.userInfo!.process![0].selectors,
+          ...SchemaMetadata.userInfo.process![0].selectors,
           uploads: { selector: "user.mytorrents" },
           seeding: { selector: "user.myseeds" },
         },
       },
       {
-        ...SchemaMetadata.userInfo!.process![1],
+        ...SchemaMetadata.userInfo.process![1],
         selectors: {
-          ...SchemaMetadata.userInfo!.process![1].selectors,
+          ...SchemaMetadata.userInfo.process![1].selectors,
           trueUploaded: { selector: "uploaded_real" },
           levelId: { selector: "class" },
           levelName: {

@@ -119,18 +119,82 @@
   },
   "MediaServerEntity": {
     "ItemInformationDialog": {
+      "premiereDate": "Premiered: ",
+      "watched": "Watched: ",
+      "playbackProgress": "Playback progress",
+      "notWatched": "Not watched",
+      "favorite": "In favorites",
+      "notFavorite": "Not in favorites",
+      "audio": "Audio: ",
+      "criticRating": "Critics",
+      "dateCreated": "Added: ",
       "duration": "Duration: ",
-      "mediaInfo": "Media Info: ",
+      "episodeCount": "{count} episode(s)",
+      "externalUrls": "Links: ",
+      "labels": "Labels: ",
+      "loadingDetail": "Loading details…",
+      "mediaSourceCount": "Versions: ",
+      "officialRating": "Rated: ",
+      "path": "Path: ",
+      "people": "Cast & Crew: ",
+      "playCountText": "{count} play(s)",
+      "rating": "Rating: ",
+      "searchOnSite": "Search on sites: ",
+      "series": "Series: ",
       "size": "Size: ",
+      "studios": "Studios: ",
+      "subtitle": "Subtitle: ",
+      "taglines": "Taglines: ",
       "title": "Media Details",
-      "type": "Type: "
+      "type": "Type: ",
+      "video": "Video: ",
+      "year": "Year: "
     },
     "detail": "Details",
+    "embedded": "Embedded",
+    "external": "External",
     "loadMore": "Load More",
     "noItems": "No Items, use Search Input or Load More Button to Load",
     "searchPlaceholder": "Search term",
     "serverFilter": {
       "all": "All Servers"
+    },
+    "versions": "{count} version(s)"
+  },
+  "MyCollection": {
+    "alert": "Favorites are stored locally; push them to your downloader in bulk when a site-wide freeleech starts.",
+    "clearAll": "Clear all",
+    "clearConfirm": "Clear all torrent favorites?",
+    "deleteSuccess": "Deleted",
+    "dialog": {
+      "alreadyFavorited": "In favorites",
+      "alreadyFavoritedNotice": "{0} of them are already in favorites — this will update their category and comment.",
+      "comment": "Comment",
+      "editTitle": "Edit favorite",
+      "editSuccess": "Updated {0} favorite(s)",
+      "favCategories": "Categories",
+      "favCategoriesHint": "Pick existing categories or type a new one and press Enter; a torrent can belong to several categories, leave empty for uncategorized",
+      "saveAndEditSuccess": "Added {0} torrent(s) and updated {1} favorite(s)",
+      "saveError": "Failed to add to favorites",
+      "saveSuccess": "Added {0} torrent(s) to favorites",
+      "title": "Add {0} torrent(s) to favorites",
+      "totalSize": "Total {0}"
+    },
+    "emptyNotice": "No favorites yet. Use the favorite button on the search results page, a torrent list page, or a torrent detail page.",
+    "filterAll": "All categories",
+    "filterLabel": "Filter favorites",
+    "loadError": "Failed to load torrent favorites",
+    "table": {
+      "action": {
+        "edit": "Edit categories and comment"
+      },
+      "category": "Category",
+      "createdAt": "Favorited at",
+      "favCategories": "Fav. categories",
+      "size": "Size",
+      "time": "Published at",
+      "title": "Title",
+      "unclassified": "Uncategorized"
     }
   },
   "MyClient": {
@@ -373,6 +437,7 @@
       "copyLink": "Copy Download Link",
       "copyLinkFailed": "Failed to copy download link",
       "copyLinkSuccess": "Download link copied to clipboard",
+      "favorite": "Add to favorites",
       "localDownload": "Download Torrent File Locally",
       "sendToDefault": "Send to Default Downloader",
       "sendToDownloader": "Send to Downloader"
@@ -600,6 +665,7 @@
       "keepUploadTask": "Reseed tasks (keepUploadTask)",
       "metadata": "Site and service configuration (metadata)",
       "searchResultSnapshot": "Search result snapshots (searchResultSnapshot)",
+      "torrentFavorite": "Torrent favorites (torrentFavorite)",
       "userInfo": "User information (userInfo)"
     },
     "localExport": "Local Export",
@@ -751,6 +817,7 @@
           "dateYear": "current year",
           "searchKeyword": "Search Keywords",
           "searchPlan": "Search Plan Name",
+          "torrentCategory": "The category of torrent",
           "torrentSite": "The Site ID of torrent",
           "torrentSiteName": "The Site name of torrent",
           "torrentSubTitle": "The subtitle of torrent",
@@ -837,6 +904,43 @@
   "SetMediaServer": {
     "Editor": {
       "authInfo": "Authentication Info"
+    },
+    "Index": {
+      "refreshStatus": "Refresh Status",
+      "status": "Server Status",
+      "statusOffline": "Unreachable",
+      "statusUntested": "Untested"
+    },
+    "Overview": {
+      "averageBitrate": "Avg. Bitrate",
+      "byCodec": "Video Codec",
+      "byContainer": "Container",
+      "byResolution": "Resolution",
+      "byRootPath": "By directory / disk (size)",
+      "countUnit": "{count} item(s)",
+      "generatedAt": "Generated at {time}",
+      "generating": "Scanning the library and aggregating…",
+      "hint": "Generated on demand — the whole library is traversed in the background, large libraries may take a while",
+      "neverWatched": "Never watched but takes space (top 10)",
+      "partial": "Partially watched",
+      "playsPerGb": "Plays per GB",
+      "playsPerGbValue": "{value} /GB",
+      "recentlyAdded": "Added in the last 7 days (top 10)",
+      "regenerate": "Regenerate",
+      "title": "Library Overview",
+      "totalItems": "Items",
+      "totalPlays": "Total plays",
+      "totalSize": "Total size",
+      "truncated": "Reached the item limit ({count} items scanned), only part of the library is covered",
+      "unknownKey": "Unknown",
+      "unsupported": "This media server does not support overview statistics (or has no credentials configured)",
+      "warningCancel": "Cancel",
+      "warningConfirm": "I understand the risk, start scanning",
+      "warningLine1": "Generating the overview fetches **every item** of your library page by page (movies / series), which is a heavy operation.",
+      "warningLine2": "Most public media servers do **not** allow this kind of full-library traversal — it may be treated as abuse and get your account rate-limited or even banned. Only use it on servers you host yourself or are explicitly allowed to scan.",
+      "warningLine3": "The traversal only starts after you confirm. Closing the dialog stops further requests, but requests already sent cannot be recalled.",
+      "warningTitle": "Please confirm first: a full-library scan may violate server rules",
+      "watch": "Watch status"
     },
     "add": {
       "title": "Add Media Server"
@@ -949,6 +1053,8 @@
       "name": "Site Name",
       "open": "Open",
       "showMessageCount": "Show Notice",
+      "siteTypePrivate": "Private site",
+      "siteTypePublic": "Public site",
       "tags": "Tags",
       "url": "URL"
     },
@@ -991,7 +1097,8 @@
       "importComplete": "One-click import complete, successfully added {count} sites",
       "includePublicSite": "Include public sites ({count})",
       "includePublicSiteHint": "Public sites cannot be verified by a search and are written directly when added. They are hidden from the list by default; when enabled they appear in the list and join \"ALL\", and disabling it deselects any selected public sites",
-      "loading": "Loading site definitions… ({loaded} loaded)",
+      "siteTypePrivateTip": "Private site: must pass a search check before it can be added automatically",
+      "siteTypePublicTip": "Public site: cannot be verified by a search, so it is written directly when added",
       "stats": "Selected {count} sites, added {success} sites, failed to add {failed} sites.",
       "status": {
         "failed": "Failed to add",
@@ -1210,6 +1317,8 @@
     "copyLink": "Copy Link",
     "copyLinkFailed": "Failed to copy download link",
     "copyLinkSuccess": "Download link copied to clipboard",
+    "favoriteTorrent": "Add this torrent to favorites",
+    "favoriteTorrents": "Add torrents to favorites",
     "noTorrentParsed": "No torrents found on this page",
     "openPTD": "Open PTD",
     "parsePageFailed": "Page parsing failed",

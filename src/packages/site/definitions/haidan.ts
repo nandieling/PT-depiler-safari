@@ -65,9 +65,9 @@ export const siteMetadata: ISiteMetadata = {
   ],
 
   search: {
-    ...SchemaMetadata.search!,
+    ...SchemaMetadata.search,
     selectors: {
-      ...SchemaMetadata.search!.selectors!,
+      ...SchemaMetadata.search.selectors!,
       rows: { selector: ".torrent_wrap" },
       link: linkQuery,
       url: {
@@ -94,7 +94,9 @@ export const siteMetadata: ISiteMetadata = {
       time: {
         selector: [".time_col span[title]"],
         attr: "title",
-        filters: [{ name: "parseValidTimeString" }],
+        // 这里原来写的是 { name: "parseValidTimeString" } —— 具名过滤器里叫 parseTime，且该名字实际不存在，
+        // 于是它一直被静默跳过、由基类的 parseTimeWithZone 按本站 timezoneOffset(+0800) 解析（这是正确行为）。
+        // parseTime 走的是 date-fns parse + 运行主机时区，反而不如基类准确，故直接省略该过滤器。
       },
       size: { selector: ".video_size", filters: [{ name: "parseSize" }] },
       author: { selector: [".time_col>i, .time_col>.username-center"] },
@@ -135,7 +137,7 @@ export const siteMetadata: ISiteMetadata = {
       },
 
       tags: [
-        ...SchemaMetadata.search!.selectors!.tags!,
+        ...SchemaMetadata.search.selectors!.tags!,
         { name: "官方", selector: "label:contains('官方')", color: "#ff0000" },
         { name: "中字", selector: "label:contains('中字')", color: "#0000ff" },
         { name: "外语", selector: "label:contains('外语')", color: "#004040" },

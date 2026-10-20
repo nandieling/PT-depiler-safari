@@ -1,7 +1,7 @@
 import type { ITorrent } from "@ptd/site";
 import type { TDownloaderKey } from "@/shared/types/storages/metadata.ts";
 import type { CAddTorrentOptions } from "@ptd/downloader";
-import { formatDate } from "@/options/utils.ts";
+import { datePathTemplateVars, expandPathTemplate } from "@ptd/downloader/utils/pathTemplate.ts";
 import { useRuntimeStore } from "@/options/stores/runtime.ts";
 import { useMetadataStore } from "@/options/stores/metadata.ts";
 import { sendMessage } from "@/messages.ts";
@@ -31,9 +31,7 @@ export function sendTorrentToDownloader(
   // 预构造动态替换映射表
   const nowDate = new Date();
   const baseReplaceMap: Record<string, string> = {
-    "date:YYYY": formatDate(nowDate, "yyyy"),
-    "date:MM": formatDate(nowDate, "MM"),
-    "date:DD": formatDate(nowDate, "dd"),
+    ...datePathTemplateVars(nowDate),
   };
 
   // 搜索相关动态替换
@@ -63,16 +61,13 @@ export function sendTorrentToDownloader(
         replaceMap["torrent.siteName"] = await metadataStore.getSiteName(torrent.site);
       }
 
-      for (const key of ["savePath", "label"] as (keyof typeof realAddTorrentOptions)[]) {
-        if (realAddTorrentOptions[key]) {
-          if (realAddTorrentOptions[key] === "") {
-            delete realAddTorrentOptions[key];
-          } else {
-            for (const [replaceKey, value] of Object.entries(replaceMap)) {
-              // @ts-ignore
-              realAddTorrentOptions[key] = (realAddTorrentOptions[key]! as string).replace(`$${replaceKey}$`, value);
-            }
-          }
+      for (const key of ["savePath", "label"] as const) {
+        const value = realAddTorrentOptions[key];
+        if (value === "") {
+          // 空值表示「交给下载器自己决定」，而不是把空字符串当成路径/标签发过去
+          delete realAddTorrentOptions[key];
+        } else if (value) {
+          realAddTorrentOptions[key] = expandPathTemplate(value, replaceMap) ?? value;
         }
       }
 
@@ -82,7 +77,7 @@ export function sendTorrentToDownloader(
           downloaderId: downloaderId,
           addTorrentOptions: realAddTorrentOptions as CAddTorrentOptions,
         }).catch((x) => {
-          runtimeStore.showSnakebar(`[${torrent.title}] 发送到下载器失败！错误信息： ${x}`, { color: "error" });
+          runtimeStore.showSnackbar(`[${torrent.title}] 发送到下载器失败！错误信息： ${x}`, { color: "error" });
         }),
       );
     }
@@ -94,18 +89,18 @@ export function sendTorrentToDownloader(
           const failedCount = status.filter((x) => x?.downloadStatus === "failed").length;
           const color = failedCount > 0 ? "warning" : "success";
 
-          runtimeStore.showSnakebar(
+          runtimeStore.showSnackbar(
             `成功发送 ${status.length - failedCount} 个任务到下载器` +
               (pendingCount > 0 ? `（${pendingCount}在下载队列中）` : "") +
               (failedCount > 0 ? `，有 ${failedCount} 个任务发送失败` : ""),
             { color },
           );
         } else {
-          runtimeStore.showSnakebar("似乎并没有任务发送到下载器", { color: "warning" });
+          runtimeStore.showSnackbar("似乎并没有任务发送到下载器", { color: "warning" });
         }
       })
       .catch((x) => {
-        runtimeStore.showSnakebar("有任务发送到下载器失败，请在下载历史页面重试", { color: "error" });
+        runtimeStore.showSnackbar("有任务发送到下载器失败，请在下载历史页面重试", { color: "error" });
       })
       .finally(() => {
         resolve();
