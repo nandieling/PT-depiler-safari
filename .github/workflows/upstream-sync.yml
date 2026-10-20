@@ -116,8 +116,8 @@ jobs:
             echo "没有需要提交的改动。"
             exit 0
           fi
-          subject="sync: 同步上游 PT-depiler 至 ${TARGET:0:8}"
-          body="上游范围 \`${BASE:0:8}\` -> \`${TARGET:0:8}\`，由 scripts/update-upstream.sh 三方合并生成。"
+          subject="sync: 同步上游 PT-depiler 至 ${TARGET:0:8} [skip ci]"
+          body="上游范围 \`${BASE:0:8}\` -> \`${TARGET:0:8}\`，由 scripts/update-upstream.sh 三方合并生成。本工作流已在合并前跑过类型检查与全部构建，[skip ci] 跳过 PR 上的重复构建。"
           if [[ "${STATE}" == "conflict" ]]; then
             body="${body}"$'\n\n'"以下文件保留了冲突标记，需要人工合并："
             while IFS= read -r conflicted; do

@@ -173,7 +173,7 @@ UPSTREAM_REPO=<地址> pnpm update:upstream                       # 换仓库
 
 ### 自动跟随上游
 
-`upstream-sync.yml` 每天检查一次上游。没有新版本时直接结束；有新版本时应用补丁，在 macOS runner 上依次跑 `pnpm check`、三端构建和 `pnpm build:safari-app`，全部通过就在 `codex/upstream-sync` 分支上开 PR 并默认自动 squash 合并，合并后再次触发 `build.yml` 打包。验证失败或存在冲突时，PR 保持 Draft 并列出需要人工合并的文件。手动触发时可以指定上游分支或提交号，也可以取消自动合并。
+`upstream-sync.yml` 每天检查一次上游。没有新版本时直接结束；有新版本时应用补丁，在 macOS runner 上依次跑 `pnpm check`、三端构建和 `pnpm build:safari-app`，全部通过就在 `codex/upstream-sync` 分支上开 PR 并默认自动 squash 合并，合并后再次触发 `build.yml` 打包。同步提交带 `[skip ci]`：构建验证已在工作流里做过，不再在 PR 上重复一遍；你在同步分支上追加的提交会照常触发构建。验证失败或存在冲突时，PR 保持 Draft 并列出需要人工合并的文件。手动触发时可以指定上游分支或提交号，也可以取消自动合并。
 
 自动合并会把上游改动直接送进 `main`。想每次都人工确认，可以在手动触发时取消 `merge`，或者为 `main` 打开必需状态检查，让工作流改用自动合并队列。
 
