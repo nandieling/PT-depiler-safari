@@ -36,18 +36,11 @@ const permissions = [
 
 const optionalPermissions = ["nativeMessaging"];
 
-<<<<<<< ours
-// @ts-ignore
-const git_count = git.count("HEAD");
+const gitInfo = getGitInfo();
 
 // Safari 移植版使用自己的版本号（package.json 的 version），上游基线另见 __UPSTREAM_COMMIT__
 const base_version: string = pkg.version;
-const commit_version = `${base_version}+${git.short(__dirname)}`;
-=======
-const gitInfo = getGitInfo();
-const base_version = `${pkg.version}.${gitInfo.count}`;
 const commit_version = `${base_version}+${gitInfo.short}`;
->>>>>>> theirs
 
 /** 最近一次同步到的上游提交，记录在 .upstream-synced；读不到时留空 */
 function syncedUpstreamCommit(): string {

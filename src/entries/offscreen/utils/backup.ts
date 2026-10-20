@@ -1,6 +1,6 @@
 import { intersection, isEqual, toMerged } from "es-toolkit";
 import { formatDate } from "date-fns";
-import { saveAs } from "file-saver";
+import { saveBlobLocally } from "./saveBlobLocally.ts";
 import { getBackupServer, IBackupData, IBackupFileInfo } from "@ptd/backupServer";
 import { backupDataToZipBlob, hasBackupRetentionToApply, pruneBackupFiles } from "@ptd/backupServer/utils.ts";
 import AbstractBackupServer from "@ptd/backupServer/AbstractBackupServer.ts";
@@ -171,9 +171,9 @@ export async function exportBackupData(
   logger({ msg: `Exporting backup data to ${backupServerId}`, data: { backupFields, backupFilename } });
   if (backupServerId === "local") {
     const zipBlob = await backupDataToZipBlob(backupData, encryptionKey);
-    // Safari 无 chrome.downloads，只能在页面上下文内用 file-saver 保存
+    // Safari 无 chrome.downloads，只能在扩展页面内用 <a download> 保存
     if (__BROWSER__ === "safari") {
-      saveAs(zipBlob, backupFilename);
+      saveBlobLocally(zipBlob, backupFilename);
     } else {
       const blobUrl = URL.createObjectURL(zipBlob);
       try {

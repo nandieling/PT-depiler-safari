@@ -25,12 +25,6 @@ export async function loadAllAddedSiteMetadata(sites?: string[]): Promise<TOptio
   const metadataStore = useMetadataStore();
 
   await Promise.allSettled(
-<<<<<<< ours
-    loadSites.map(async (siteId) => {
-      if (allAddedSiteMetadata[siteId]) {
-        return;
-      }
-=======
     loadSites.map((siteId) => {
       return new Promise<void>(async (resolve) => {
         // 这里只用到 type / name / aka / userInfo / isDead，全部在构建期轻量索引里，
@@ -38,27 +32,23 @@ export async function loadAllAddedSiteMetadata(sites?: string[]): Promise<TOptio
         const indexEntry = siteMetadataIndex[siteId];
 
         if (!allAddedSiteMetadata[siteId] && indexEntry) {
-          const siteFaviconUrl = await sendMessage("getSiteFavicon", { site: siteId });
->>>>>>> theirs
+          let siteFaviconUrl = NO_IMAGE;
+          try {
+            siteFaviconUrl = await sendMessage("getSiteFavicon", { site: siteId });
+          } catch (error) {
+            console.warn(`Failed to load favicon for ${siteId}`, error);
+          }
 
-      const siteMetadata = await metadataStore.getSiteMetadata(siteId);
-      const siteName = await metadataStore.getSiteName(siteId);
+          const siteName = await metadataStore.getSiteName(siteId);
 
-      let siteFaviconUrl = NO_IMAGE;
-      try {
-        siteFaviconUrl = await sendMessage("getSiteFavicon", { site: siteId });
-      } catch (error) {
-        console.warn(`Failed to load favicon for ${siteId}`, error);
-      }
+          // 加载站点图标
+          const siteFavicon = new Image();
+          siteFavicon.src = siteFaviconUrl;
+          siteFavicon.decode().catch(() => {
+            siteFavicon.src = NO_IMAGE;
+            siteFavicon.decode().catch(() => undefined);
+          });
 
-<<<<<<< ours
-      // 加载站点图标
-      const siteFavicon = new Image();
-      siteFavicon.src = siteFaviconUrl;
-      siteFavicon.decode().catch(() => {
-        siteFavicon.src = NO_IMAGE;
-        siteFavicon.decode().catch(() => undefined);
-=======
           (allAddedSiteMetadata as TOptionSiteMetadatas)[siteId] = {
             id: siteId,
             type: indexEntry.type,
@@ -75,22 +65,7 @@ export async function loadAllAddedSiteMetadata(sites?: string[]): Promise<TOptio
         }
 
         resolve();
->>>>>>> theirs
       });
-
-      (allAddedSiteMetadata as TOptionSiteMetadatas)[siteId] = {
-        id: siteId,
-        type: siteMetadata.type,
-        siteName,
-        combinedSiteName: Array.from(
-          new Set([siteName, siteMetadata.name, ...(siteMetadata.aka ?? [])].filter(Boolean)),
-        ).join("|$|"),
-        hasUserInfo: Object.hasOwn(siteMetadata, "userInfo"),
-        isDead: siteMetadata.isDead ?? false,
-        isOffline: metadataStore.sites[siteId]?.isOffline ?? false,
-        faviconSrc: siteFaviconUrl,
-        faviconElement: siteFavicon,
-      };
     }),
   );
 

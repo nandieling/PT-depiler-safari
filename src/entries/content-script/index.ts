@@ -5,11 +5,7 @@
 // social 匹配判断经消息由 offscreen 代查，避免把 social 包打进引导（见 issue #1467）。
 
 import { sendMessage } from "@/messages.ts";
-<<<<<<< ours
 import type { ISafariTabRequest, ISafariTabResponse } from "@/messages.ts";
-import type { IMetadataPiniaStorageSchema } from "@/shared/types/storages/metadata.ts";
-=======
->>>>>>> theirs
 import type { IConfigPiniaStorageSchema } from "@/shared/types/storages/config.ts";
 
 async function loadApp(props: Parameters<(typeof import("./app/init.ts"))["mountApp"]>[1]) {

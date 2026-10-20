@@ -73,7 +73,7 @@ async function handleLocalDownloadMulti() {
   }
 
   if (failedCount > 0) {
-    runtimeStore.showSnakebar(`${failedCount}/${torrents.length} torrent downloads failed`, { color: "error" });
+    runtimeStore.showSnackbar(`${failedCount}/${torrents.length} torrent downloads failed`, { color: "error" });
   }
 }
 
