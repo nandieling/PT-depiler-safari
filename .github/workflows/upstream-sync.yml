@@ -1,0 +1,190 @@
+name: Sync upstream
+
+# 跟随上游 pt-plugins/PT-depiler：有新版时自动打补丁、验证构建，并开一个 PR
+on:
+  schedule:
+    # 每天 09:20（Asia/Shanghai）
+    - cron: "20 1 * * *"
+  workflow_dispatch:
+    inputs:
+      upstream_ref:
+        description: "上游分支名或提交号，留空则使用 master"
+        required: false
+        type: string
+        default: ""
+      merge:
+        description: "验证通过后自动合并 PR"
+        required: false
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: upstream-sync
+  cancel-in-progress: false
+
+env:
+  UPSTREAM_API_REPO: pt-plugins/PT-depiler
+  SYNC_BRANCH: codex/upstream-sync
+  NODE_VERSION: ">=23.7.0"
+
+jobs:
+  sync:
+    # macOS runner：合并前先确认 Safari App 也能构建，不只是 WebExtension
+    name: 同步上游
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "pnpm"
+
+      - name: 解析上游目标提交
+        id: compare
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REF_INPUT: ${{ inputs.upstream_ref }}
+        run: |
+          ref="${REF_INPUT:-master}"
+          target="$(gh api "repos/${UPSTREAM_API_REPO}/commits/${ref}" --jq .sha)"
+          base="$(tr -d '[:space:]' < .upstream-synced)"
+          {
+            echo "base=${base}"
+            echo "target=${target}"
+            if [[ "${base}" == "${target}" ]]; then echo "changed=false"; else echo "changed=true"; fi
+          } >> "$GITHUB_OUTPUT"
+          echo "上游基线 ${base:0:8} -> ${target:0:8}"
+
+      - name: 应用上游改动
+        if: steps.compare.outputs.changed == 'true'
+        id: apply
+        env:
+          UPSTREAM_REF: ${{ steps.compare.outputs.target }}
+        run: |
+          status=0
+          bash scripts/update-upstream.sh 2>&1 | tee "${RUNNER_TEMP}/sync.log" || status=$?
+          grep '^conflicted-file: ' "${RUNNER_TEMP}/sync.log" |
+            sed 's/^conflicted-file: //' > "${RUNNER_TEMP}/conflicts.txt" || true
+          conflicts="$(wc -l < "${RUNNER_TEMP}/conflicts.txt" | tr -d ' ')"
+          state=clean
+          if [[ "${conflicts}" != "0" ]]; then
+            state=conflict
+          elif [[ "${status}" != "0" ]]; then
+            state=error
+          fi
+          {
+            echo "state=${state}"
+            echo "conflicts=${conflicts}"
+          } >> "$GITHUB_OUTPUT"
+          if [[ "${state}" == "error" ]]; then
+            echo "::error::上游补丁未能应用（退出码 ${status}），本次不推送。"
+            exit 1
+          fi
+
+      - name: 安装依赖并检查
+        if: steps.apply.outputs.state == 'clean'
+        run: |
+          pnpm install --frozen-lockfile || pnpm install --no-frozen-lockfile
+          pnpm check
+
+      - name: 验证三端与 Safari App
+        if: steps.apply.outputs.state == 'clean'
+        run: |
+          pnpm build:dist
+          pnpm build:dist-firefox
+          pnpm build:dist-safari
+          pnpm build:safari-app
+
+      - name: 提交改动
+        if: steps.compare.outputs.changed == 'true'
+        env:
+          BASE: ${{ steps.compare.outputs.base }}
+          TARGET: ${{ steps.compare.outputs.target }}
+          STATE: ${{ steps.apply.outputs.state }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "没有需要提交的改动。"
+            exit 0
+          fi
+          subject="sync: 同步上游 PT-depiler 至 ${TARGET:0:8}"
+          body="上游范围 \`${BASE:0:8}\` -> \`${TARGET:0:8}\`，由 scripts/update-upstream.sh 三方合并生成。"
+          if [[ "${STATE}" == "conflict" ]]; then
+            body="${body}"$'\n\n'"以下文件保留了冲突标记，需要人工合并："
+            while IFS= read -r conflicted; do
+              body="${body}"$'\n'"- ${conflicted}"
+            done < "${RUNNER_TEMP}/conflicts.txt"
+          fi
+          git commit -m "${subject}" -m "${body}"
+
+      - name: 推送同步分支
+        if: steps.compare.outputs.changed == 'true'
+        run: git push --force origin "HEAD:refs/heads/${SYNC_BRANCH}"
+
+      - name: 创建或更新 PR
+        if: steps.compare.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BASE: ${{ steps.compare.outputs.base }}
+          TARGET: ${{ steps.compare.outputs.target }}
+          STATE: ${{ steps.apply.outputs.state }}
+          MERGE_INPUT: ${{ inputs.merge }}
+        run: |
+          {
+            echo "本 PR 由 GitHub Actions 自动生成：把上游 [PT-depiler](https://github.com/${UPSTREAM_API_REPO}) 的改动三方合并到 Safari 移植版上。"
+            echo
+            echo "上游范围：[\`${BASE:0:8}\`](https://github.com/${UPSTREAM_API_REPO}/commit/${BASE}) -> [\`${TARGET:0:8}\`](https://github.com/${UPSTREAM_API_REPO}/commit/${TARGET})"
+            echo
+            echo "### 上游提交"
+            echo '```'
+            gh api "repos/${UPSTREAM_API_REPO}/compare/${BASE}...${TARGET}" \
+              --jq '.commits[:60][] | .sha[0:8] + " " + (.commit.message | split("\n")[0])'
+            echo '```'
+            if [[ "${STATE}" == "conflict" ]]; then
+              echo
+              echo "### 需要人工合并的文件"
+              while IFS= read -r conflicted; do
+                echo "- [ ] ${conflicted}"
+              done < "${RUNNER_TEMP}/conflicts.txt"
+              echo
+              echo "冲突标记（\`<<<<<<<\`）已保留在文件中，构建验证已跳过。"
+            else
+              echo
+              echo "\`pnpm check\`、三端 WebExtension 构建与 \`pnpm build:safari-app\` 均已通过。"
+            fi
+          } > "${RUNNER_TEMP}/pr.md"
+
+          title="sync: 同步上游 PT-depiler 至 ${TARGET:0:8}"
+          number="$(gh pr list --head "${SYNC_BRANCH}" --state open --json number --jq '.[0].number // empty')"
+          if [[ -n "${number}" ]]; then
+            gh pr edit "${number}" --title "${title}" --body-file "${RUNNER_TEMP}/pr.md"
+          else
+            number="$(gh pr create --head "${SYNC_BRANCH}" --title "${title}" --body-file "${RUNNER_TEMP}/pr.md" | sed 's#.*/##')"
+          fi
+
+          if [[ "${STATE}" == "conflict" ]]; then
+            gh pr ready "${number}" --undo || true
+            exit 0
+          fi
+          gh pr ready "${number}" || true
+
+          do_merge="${MERGE_INPUT:-true}"
+          if [[ "${GITHUB_EVENT_NAME}" == "schedule" ]]; then
+            do_merge=true
+          fi
+          if [[ "${do_merge}" != "true" ]]; then
+            echo "按输入设置不自动合并，PR #${number} 等待人工处理。"
+            exit 0
+          fi
+          gh pr merge --squash --delete-branch "${number}" ||
+            gh pr merge --auto --squash "${number}" ||
+            gh pr comment "${number}" --body "自动合并失败（可能被分支保护规则拦住），请人工合并。"

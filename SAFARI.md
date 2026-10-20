@@ -42,9 +42,13 @@ pnpm build:dist-safari
 pnpm build:safari-app
 ```
 
-Files that upstream changed and the Safari layer also touches come out with conflict markers, and the script lists them; resolve, then update `.upstream-synced` by re-running the script. Only `src`, `public`, `vite`, `vite.config.ts`, `package.json`, `pnpm-lock.yaml`, `pnpm-workspace.yaml` and `.dsh` are synced, so the Safari/Xcode project files in this repository are never touched.
+The script takes the upstream `package.json` as-is and then re-applies this repository's own `version` and Safari scripts through `scripts/sync-package-json.mjs`, so the version difference never turns into a conflict. Files that upstream changed and the Safari layer also touches come out with conflict markers, and the script lists them as `conflicted-file: <path>` and exits with status 1; resolve them, then re-run. `.upstream-synced` only moves forward when everything merged cleanly. The synced paths are `src`, `public`, `vite`, `vite.config.ts`, `package.json`, `pnpm-lock.yaml`, `pnpm-workspace.yaml`, `patches` and `.dsh`, so the Safari/Xcode project files in this repository are never touched. Upstream tags are neither fetched nor pushed. The script works in a shallow CI clone too: it fetches just the two upstream commits it needs by SHA.
 
 Upstream expects Firefox to use `background.page` (`src/entries/background/firefox_main.html`). Safari's MV3 accepts only `background.scripts`, so the Safari manifest points at `src/entries/background/safari_main.ts`, which mirrors that HTML entry.
+
+### Automation
+
+`.github/workflows/upstream-sync.yml` runs the script on a schedule against the upstream default branch, validates the result with `pnpm check`, all three web builds and `pnpm build:safari-app` on a macOS runner, then opens a pull request from `codex/upstream-sync` and squash-merges it when everything is green. A conflicted run pushes the conflict markers to a draft pull request with the affected files listed instead. `.github/workflows/build.yml` packages the three extension directories and the unsigned macOS app on every push to `main`, and publishes them as a release when a tag is pushed.
 
 ## Safari platform differences
 

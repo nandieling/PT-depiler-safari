@@ -9,7 +9,8 @@
 </p>
 
 <p align="center">
-  <a href="../../actions/workflows/action_build_safari.yml"><img src="../../actions/workflows/action_build_safari.yml/badge.svg" alt="Safari Build"></a>
+  <a href="../../actions/workflows/build.yml"><img src="../../actions/workflows/build.yml/badge.svg" alt="Build"></a>
+  <a href="../../actions/workflows/upstream-sync.yml"><img src="https://img.shields.io/badge/upstream-sync-daily-blue" alt="Upstream Sync"></a>
   <img src="https://img.shields.io/badge/macOS-13.0%2B-black?logo=apple" alt="macOS 13.0+">
   <img src="https://img.shields.io/badge/Safari-Web_Extension-blue?logo=safari" alt="Safari Web Extension">
   <img src="https://img.shields.io/badge/TypeScript-Vue-3178c6" alt="TypeScript and Vue">
@@ -22,7 +23,7 @@
 
 PT-Depiler 基于 Manifest V3，是一款用于提高 PT 站点使用效率的浏览器扩展。它支持站点信息聚合、跨站搜索、种子下载、下载器管理和数据备份等功能。
 
-> 本仓库不是 Safari 扩展商店安装包。首次使用需要在 macOS 上通过 Xcode 构建并签名；GitHub Actions 产物也是未签名的 Xcode 工程，不能直接双击安装。
+> 本仓库不是 Safari 扩展商店安装包。首次使用需要在 macOS 上通过 Xcode 构建并签名；GitHub Actions 产物是未签名（仅 ad-hoc 签名）的 App 压缩包，不能直接双击安装。
 
 ## 主要功能
 
@@ -135,31 +136,51 @@ pnpm build:safari-project
 
 ## GitHub Actions
 
-工作流文件为 [`.github/workflows/action_build_safari.yml`](./.github/workflows/action_build_safari.yml)，默认在 `safari` 分支的 Push、Pull Request 或手动触发时运行。工作流会进行类型检查、构建未签名应用，并上传压缩后的 Xcode 工程 `pt-depiler-safari-xcode`。
+仓库带两条工作流，都以默认分支 `main` 为目标：
 
-若你的默认分支不是 `safari`，请修改工作流中的 `push.branches` 和 `pull_request.branches`。
+| 工作流 | 触发方式 | 作用 |
+| --- | --- | --- |
+| [`build.yml`](./.github/workflows/build.yml) | Push `main`、推送标签、Pull Request、手动 | 类型检查与站点定义校验，打包三端 WebExtension，在 macOS runner 上构建 Safari App；推送标签时发布 Release |
+| [`upstream-sync.yml`](./.github/workflows/upstream-sync.yml) | 每天 09:20（北京时间）、手动 | 检查上游新版本，自动三方合并、验证构建并开 PR |
+
+- `PT-Depiler-<版本>-<基线>-chrome-extension.zip` / `-firefox-extension.zip` / `-safari-extension.zip`：解压后即为可直接加载的扩展目录
+- `PT-Depiler-<版本>-<基线>-macOS.app.zip`：在 GitHub macOS runner 上构建的宿主 App，未使用开发者证书，供测试使用。从浏览器下载后需先执行 `xattr -dr com.apple.quarantine PT-Depiler.app` 去除隔离标记；要在 Safari 中长期使用仍需用自己的开发者证书签名
+
+发布新版本时推送一个与 `package.json` 中 `version` 同名的标签即可，例如 `git tag 1.3 && git push origin 1.3`，`build.yml` 会创建同名 Release 并附上全部产物。macOS job 在 Pull Request 上跳过以节省 runner 时间；若默认分支不是 `main`，请修改两个工作流中的 `branches`。
 
 ## 与上游同步
 
-先提交改动或使用 `git stash` 保持工作区干净，然后执行：
+本仓库的历史是与上游没有共同祖先的压缩快照，因此同步不做 merge：`scripts/update-upstream.sh` 把「`.upstream-synced` 记录的上游提交 → 本次上游提交」的差异以三方合并方式打在 HEAD 上，只覆盖上游代码路径（`src`、`public`、`vite`、`vite.config.ts`、`package.json`、`pnpm-lock.yaml`、`pnpm-workspace.yaml`、`patches`、`.dsh`），本仓库自建的 `scripts`、`safari`、`.github` 不受影响。
+
+本地同步前先提交改动或用 `git stash` 保持工作区干净：
 
 ```bash
-pnpm update:upstream
+pnpm update:upstream              # 只改工作区和索引，不自动提交
+pnpm install --no-frozen-lockfile
 pnpm check
 pnpm build:safari-app
 ```
 
-更新脚本默认拉取并合并 `origin/master`。如果上游仓库使用单独的 remote，可指定：
+同步目标默认为上游 `master` 最新提交，可用环境变量调整：
 
 ```bash
-UPSTREAM_REMOTE=upstream UPSTREAM_BRANCH=master pnpm update:upstream
+UPSTREAM_REF=<上游分支名或 40 位提交号> pnpm update:upstream   # 同步到指定版本
+UPSTREAM_BRANCH=main pnpm update:upstream                      # 换分支
+UPSTREAM_REPO=<地址> pnpm update:upstream                       # 换仓库
 ```
 
-Safari 兼容层与上游代码发生冲突时，脚本会保留 Git 冲突，需人工检查后再提交。
+`package.json` 整体采用上游内容，再由 `scripts/sync-package-json.mjs` 写回移植版自己的 `version` 和 Safari 相关脚本，版本号差异因此不会造成冲突。其余无法自动合并的文件会留下冲突标记，脚本按 `conflicted-file: <路径>` 列出它们并以退出码 1 结束；只有全部干净时才会更新 `.upstream-synced`。上游标签不会被拉取，也不会被推送回本仓库。
+
+### 自动跟随上游
+
+`upstream-sync.yml` 每天检查一次上游。没有新版本时直接结束；有新版本时应用补丁，在 macOS runner 上依次跑 `pnpm check`、三端构建和 `pnpm build:safari-app`，全部通过就在 `codex/upstream-sync` 分支上开 PR 并默认自动 squash 合并，合并后再次触发 `build.yml` 打包。验证失败或存在冲突时，PR 保持 Draft 并列出需要人工合并的文件。手动触发时可以指定上游分支或提交号，也可以取消自动合并。
+
+自动合并会把上游改动直接送进 `main`。想每次都人工确认，可以在手动触发时取消 `merge`，或者为 `main` 打开必需状态检查，让工作流改用自动合并队列。
 
 ## 目录说明
 
 ```text
+.github/workflows/      打包与上游同步工作流
 safari/                 可提交的 Safari Xcode 工程模板
 scripts/                Safari 工程生成、构建及上游同步脚本
 src/                    WebExtension 源代码和 Safari 兼容层

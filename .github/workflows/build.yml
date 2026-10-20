@@ -1,0 +1,186 @@
+name: Build
+
+# 打包产物：三端 WebExtension zip；推送到 main、打标签或在 macOS 上构建 Safari App
+on:
+  push:
+    branches: ["main"]
+    tags: ["*"]
+  pull_request:
+    branches: ["main"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  NODE_VERSION: ">=23.7.0"
+
+jobs:
+  check:
+    name: 类型与站点定义检查
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "pnpm"
+
+      - name: 安装依赖
+        run: pnpm install --frozen-lockfile
+
+      - name: pnpm check
+        run: pnpm check
+
+  extension:
+    name: WebExtension (${{ matrix.target }})
+    needs: check
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [chrome, firefox, safari]
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "pnpm"
+
+      - name: 安装依赖
+        run: pnpm install --frozen-lockfile
+
+      - name: 构建 WebExtension
+        run: |
+          case "${{ matrix.target }}" in
+            chrome) pnpm build:dist ;;
+            firefox) pnpm build:dist-firefox ;;
+            safari) pnpm build:dist-safari ;;
+          esac
+
+      - name: 计算产物名称
+        id: meta
+        run: |
+          version="$(node -p "require('./package.json').version")"
+          baseline="$(tr -d '[:space:]' < .upstream-synced)"
+          {
+            echo "version=${version}"
+            echo "archive=build/PT-Depiler-${version}-${baseline:0:8}-${{ matrix.target }}-extension.zip"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: 打包 zip
+        env:
+          ARCHIVE: ${{ steps.meta.outputs.archive }}
+          TARGET: ${{ matrix.target }}
+        run: |
+          mkdir -p build
+          (cd "dist-${TARGET}" && zip -qr "${GITHUB_WORKSPACE}/${ARCHIVE}" .)
+          unzip -l "${ARCHIVE}" | tail -n 3
+
+      - name: 上传产物
+        uses: actions/upload-artifact@v7
+        with:
+          name: PT-Depiler-${{ steps.meta.outputs.version }}-${{ matrix.target }}-extension
+          path: ${{ steps.meta.outputs.archive }}
+
+  app:
+    name: Safari App (macOS)
+    needs: check
+    if: github.event_name != 'pull_request'
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "pnpm"
+
+      - name: 安装依赖
+        run: pnpm install --frozen-lockfile
+
+      - name: 构建未签名 App
+        run: pnpm build:safari-app
+
+      - name: ad-hoc 签名并打包
+        id: pack
+        run: |
+          app="safari-project/DerivedData/Build/Products/Debug/PT-Depiler.app"
+          if [[ ! -d "${app}" ]]; then
+            echo "::error::未找到构建产物 ${app}"
+            exit 1
+          fi
+          # CI 上没有开发者证书，只能做 ad-hoc 签名；产物供测试使用
+          if ! codesign --force --deep --sign - "${app}"; then
+            echo "::warning::ad-hoc 签名失败，产物保持未签名"
+          fi
+          version="$(node -p "require('./package.json').version")"
+          baseline="$(tr -d '[:space:]' < .upstream-synced)"
+          archive="build/PT-Depiler-${version}-${baseline:0:8}-macOS.app.zip"
+          mkdir -p build
+          ditto -c -k --sequesterRsrc --keepParent "${app}" "${archive}"
+          {
+            echo "version=${version}"
+            echo "archive=${archive}"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: 上传产物
+        uses: actions/upload-artifact@v7
+        with:
+          name: PT-Depiler-${{ steps.pack.outputs.version }}-macOS-app
+          path: ${{ steps.pack.outputs.archive }}
+
+  release:
+    name: 发布 Release
+    needs: [extension, app]
+    if: github.event_name != 'pull_request' && startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: 下载产物
+        uses: actions/download-artifact@v8
+        with:
+          pattern: PT-Depiler-*
+          path: release-assets
+          merge-multiple: true
+
+      - name: 生成发布说明
+        run: |
+          baseline="$(tr -d '[:space:]' < .upstream-synced)"
+          cat > "${RUNNER_TEMP}/notes.md" <<EOF
+          PT-Depiler Safari 移植版 ${GITHUB_REF_NAME}，上游基线 [\`${baseline:0:8}\`](https://github.com/pt-plugins/PT-depiler/commit/${baseline})。
+
+          - \`PT-Depiler-*-chrome-extension.zip\` / \`-firefox-extension.zip\` / \`-safari-extension.zip\`：WebExtension 构建产物，解压后即为可直接加载的扩展目录。
+          - \`PT-Depiler-*-macOS.app.zip\`：在 GitHub macOS runner 上构建的 Safari App，未使用开发者证书，仅做 ad-hoc 签名。从浏览器下载后需先执行 \`xattr -dr com.apple.quarantine PT-Depiler.app\` 去除隔离标记，再移动到 \`.app\` 所在目录正常打开；需要在 Safari 中稳定使用请自行用 Xcode 重新签名。
+
+          本产物由 GitHub Actions 自动构建，构建日志见本次工作流运行记录。
+          EOF
+          cat "${RUNNER_TEMP}/notes.md"
+
+      - name: 创建 Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          assets=(release-assets/*.zip)
+          if [ ! -e "${assets[0]}" ]; then
+            echo "::error::没有可发布的产物"
+            exit 1
+          fi
+          gh release create "${GITHUB_REF_NAME}" \
+            --title "PT-Depiler ${GITHUB_REF_NAME}" \
+            --notes-file "${RUNNER_TEMP}/notes.md" \
+            "${assets[@]}" ||
+            gh release upload "${GITHUB_REF_NAME}" "${assets[@]}" --clobber
