@@ -167,8 +167,13 @@ jobs:
           number="$(gh pr list --head "${SYNC_BRANCH}" --state open --json number --jq '.[0].number // empty')"
           if [[ -n "${number}" ]]; then
             gh pr edit "${number}" --title "${title}" --body-file "${RUNNER_TEMP}/pr.md"
-          else
-            number="$(gh pr create --head "${SYNC_BRANCH}" --title "${title}" --body-file "${RUNNER_TEMP}/pr.md" | sed 's#.*/##')"
+          elif ! number="$(gh pr create --head "${SYNC_BRANCH}" --title "${title}" --body-file "${RUNNER_TEMP}/pr.md" | sed 's#.*/##')"; then
+            echo "::error::PR 创建失败。若提示 \"GitHub Actions is not permitted to create or approve pull requests\"，请到 Settings → Actions → General → Workflow permissions 勾选允许 GitHub Actions 创建 PR；同步分支 ${SYNC_BRANCH} 已推送，可重跑本工作流。"
+            exit 1
+          fi
+          if [[ -z "${number}" ]]; then
+            echo "::error::未能取得 PR 编号，请检查上面的 gh 输出。"
+            exit 1
           fi
 
           if [[ "${STATE}" == "conflict" ]]; then
@@ -186,5 +191,6 @@ jobs:
             exit 0
           fi
           gh pr merge --squash --delete-branch "${number}" ||
+            gh pr merge --merge --delete-branch "${number}" ||
             gh pr merge --auto --squash "${number}" ||
             gh pr comment "${number}" --body "自动合并失败（可能被分支保护规则拦住），请人工合并。"

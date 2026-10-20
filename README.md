@@ -177,6 +177,8 @@ UPSTREAM_REPO=<地址> pnpm update:upstream                       # 换仓库
 
 自动合并会把上游改动直接送进 `main`。想每次都人工确认，可以在手动触发时取消 `merge`，或者为 `main` 打开必需状态检查，让工作流改用自动合并队列。
 
+前提：本仓库 Settings → Actions → General → Workflow permissions 需勾选 “Allow GitHub Actions to create and approve pull requests”，否则工作流的内置 token 无法创建 PR（工作流会在日志里明确指出这一点）。
+
 ## 目录说明
 
 ```text
