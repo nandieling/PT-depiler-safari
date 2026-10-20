@@ -1,6 +1,6 @@
 import axios, { type AxiosRequestConfig } from "axios";
-// Safari 无 chrome.downloads，种子下载需回退到页面端保存（见 saveTorrentBlobToLocal）
-import { saveAs } from "file-saver";
+// Safari 无 chrome.downloads，种子下载需回退到扩展页面内 <a download> 保存
+import { saveBlobLocally } from "./saveBlobLocally.ts";
 import { toMerged } from "es-toolkit";
 import { isEmpty } from "es-toolkit/compat";
 
@@ -491,7 +491,7 @@ async function downloadTorrentToLocalFile(
       }
 
       if (__BROWSER__ === "safari") {
-        saveAs(torrentBlob, filename);
+        saveBlobLocally(torrentBlob, filename);
       } else {
         const torrentUrl = URL.createObjectURL(torrentBlob);
         await sendMessage("downloadFile", { url: torrentUrl, filename, conflictAction: "uniquify" });

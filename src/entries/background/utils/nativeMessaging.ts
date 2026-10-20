@@ -25,6 +25,8 @@ const ALLOWED_METHODS = new Set([
   // Search
   "getSiteSearchResult",
   "getMediaServerSearchResult",
+  "getMediaServerItemDetail",
+  "getMediaServerOverview",
   // Download and downloader
   "getDownloaderList",
   "getDownloaderConfig",
@@ -49,6 +51,10 @@ const ALLOWED_METHODS = new Set([
   "updateKeepUploadTask",
   "deleteKeepUploadTask",
   "clearKeepUploadTasks",
+  // Torrent favorites
+  "getTorrentFavorites",
+  "createTorrentFavorites",
+  "deleteTorrentFavorites",
 ]);
 
 // ── Module-scoped state ──────────────────────────────────────────────

@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { computed, inject } from "vue";
+import { computed, inject, ref, shallowRef } from "vue";
 import { useI18n } from "vue-i18n";
+import { type ITorrent } from "@ptd/site";
 
 import { sendMessage } from "@/messages.ts";
 import { useRuntimeStore } from "@/options/stores/runtime.ts";
@@ -10,6 +11,7 @@ import type { IRemoteDownloadDialogData } from "../types.ts";
 import { copyTextToClipboard, doKeywordSearch, siteInstance, type IPtdData } from "../utils.ts";
 
 import SpeedDialBtn from "../components/SpeedDialBtn.vue";
+import TorrentFavoriteDialog from "@/options/components/TorrentFavoriteDialog.vue";
 
 const metadataStore = useMetadataStore();
 const runtimeStore = useRuntimeStore();
@@ -24,7 +26,7 @@ async function parseDetailPage() {
   const parsedResult = await siteInstance.value?.transformDetailPage(document);
 
   if (typeof parsedResult?.link === "undefined") {
-    runtimeStore.showSnakebar(t("contentScript.cannotParseDetailLink"), { color: "error" });
+    runtimeStore.showSnackbar(t("contentScript.cannotParseDetailLink"), { color: "error" });
     throw new Error("无法解析当前页面种子链接");
   }
 
@@ -42,7 +44,7 @@ function handleLinkCopy() {
     const downloadUrl = await sendMessage("getTorrentDownloadLink", torrent);
 
     const copied = await copyTextToClipboard(downloadUrl);
-    runtimeStore.showSnakebar(copied ? t("contentScript.copyLinkSuccess") : t("contentScript.copyLinkFailed"), {
+    runtimeStore.showSnackbar(copied ? t("contentScript.copyLinkSuccess") : t("contentScript.copyLinkFailed"), {
       color: copied ? "success" : "error",
     });
   });
@@ -61,9 +63,28 @@ function handleSearch() {
     doKeywordSearch(torrent.title || "");
   });
 }
+
+// 收藏当前详情页种子
+const favoriteTorrents = shallowRef<ITorrent[]>([]);
+const showFavoriteDialog = ref<boolean>(false);
+
+function handleFavorite() {
+  parseDetailPage().then((torrent) => {
+    favoriteTorrents.value = [torrent];
+    showFavoriteDialog.value = true;
+  });
+}
 </script>
 
 <template>
+  <!-- 与种子列表页一致：收藏放在最下面（SpeedDial 中越靠前越靠近主按钮） -->
+  <SpeedDialBtn
+    key="favorite"
+    color="amber"
+    icon="mdi-star-plus"
+    :title="t('contentScript.favoriteTorrent')"
+    @click="handleFavorite"
+  />
   <SpeedDialBtn
     key="copy"
     color="light-blue"
@@ -95,6 +116,8 @@ function handleSearch() {
     :title="t('contentScript.quickSearch')"
     @click="handleSearch"
   />
+
+  <TorrentFavoriteDialog v-model="showFavoriteDialog" :torrent-items="favoriteTorrents" />
 </template>
 
 <style scoped lang="scss"></style>

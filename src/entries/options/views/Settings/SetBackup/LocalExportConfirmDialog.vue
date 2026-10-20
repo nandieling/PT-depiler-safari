@@ -20,13 +20,13 @@ async function doLocalExport() {
       backupFields: backupFields.value,
       backupServerId: "local",
     });
-    runtimeStore.showSnakebar(t(exported ? "SetBackup.snackbar.success" : "SetBackup.snackbar.failure"), {
+    runtimeStore.showSnackbar(t(exported ? "SetBackup.snackbar.success" : "SetBackup.snackbar.failure"), {
       color: exported ? "success" : "error",
     });
     if (exported) showDialog.value = false;
   } catch (error) {
     console.error("Failed to export local backup", error);
-    runtimeStore.showSnakebar(t("SetBackup.snackbar.failure"), { color: "error" });
+    runtimeStore.showSnackbar(t("SetBackup.snackbar.failure"), { color: "error" });
   } finally {
     isExporting.value = false;
   }

@@ -71,7 +71,7 @@ export const siteMetadata: ISiteMetadata = {
       },
     },
     selectors: {
-      ...SchemaMetadata.search!.selectors,
+      ...SchemaMetadata.search.selectors,
       url: {
         selector: "a[href*='torrents.php?id='][href*='torrentid=']", // 更精确的种子链接选择器
         attr: "href",
@@ -106,7 +106,7 @@ export const siteMetadata: ISiteMetadata = {
   },
 
   userInfo: {
-    ...SchemaMetadata.userInfo!,
+    ...SchemaMetadata.userInfo,
     process: [
       {
         requestConfig: { url: "/index.php", responseType: "document" },
@@ -152,7 +152,7 @@ export const siteMetadata: ISiteMetadata = {
       },
     ],
     selectors: {
-      ...SchemaMetadata.userInfo!.selectors,
+      ...SchemaMetadata.userInfo.selectors,
       uploaded: {
         selector: "ul.nobullet > li:contains('Upload:')",
         filters: [{ name: "parseSize" }],
@@ -178,8 +178,10 @@ export const siteMetadata: ISiteMetadata = {
         filters: [{ name: "parseNumber" }],
       },
       bonusPerHour: {
+        // 站点只给「Per Day」，除以 24 得到时魔；这里用内联过滤器 —— 具名过滤器表里没有 divide，
+        // 写成 { name: "divide" } 会被 runQueryFilters 静默跳过（该值曾因此偏高 24 倍）
         selector: "ul.nobullet > li:contains('Per Day:')",
-        filters: [{ name: "parseNumber" }, { name: "divide", args: [24] }],
+        filters: [{ name: "parseNumber" }, (query: number) => query / 24],
       },
       ratio: undefined,
       joinTime: {

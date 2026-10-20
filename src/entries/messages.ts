@@ -14,7 +14,13 @@ import type {
   ISocialRecommendationsResult,
   TSupportSocialSite$1,
 } from "@ptd/social";
-import type { IMediaServerId, IMediaServerSearchOptions, IMediaServerSearchResult } from "@ptd/mediaServer";
+import type {
+  IMediaServerId,
+  IMediaServerItem,
+  IMediaServerOverview,
+  IMediaServerSearchOptions,
+  IMediaServerSearchResult,
+} from "@ptd/mediaServer";
 import type { IBackupData, IBackupFileInfo } from "@ptd/backupServer";
 import type {
   CTorrent,
@@ -55,6 +61,8 @@ import {
   AugmentedRequired,
   IKeepUploadTask,
   TKeepUploadTaskKey,
+  ITorrentFavoriteItem,
+  TTorrentFavoriteKey,
   BridgeStatus,
 } from "@/shared/types.ts";
 
@@ -133,6 +141,10 @@ interface ProtocolMap extends TMessageMap {
     keywords?: string;
     options?: IMediaServerSearchOptions;
   }): IMediaServerSearchResult;
+  /** 调研 B12：详情弹窗按需拉取单条目的完整信息（含 People 等重字段） */
+  getMediaServerItemDetail(data: { mediaServerId: IMediaServerId; itemId: string }): IMediaServerItem | null;
+  /** 调研 C14 / C20：按需生成媒体库概览（整库遍历与聚合都在 offscreen 里完成，只回传统计结果） */
+  getMediaServerOverview(data: { mediaServerId: IMediaServerId; maxItems?: number }): IMediaServerOverview | null;
   getSearchResultSnapshotData(snapshotId: TSearchSnapshotKey): ISearchData;
   saveSearchResultSnapshotData(data: { snapshotId: TSearchSnapshotKey; data: ISearchData }): void;
   removeSearchResultSnapshotData(snapshotId: TSearchSnapshotKey): void;
@@ -188,6 +200,12 @@ interface ProtocolMap extends TMessageMap {
   getSocialInformation(data: { site: TSupportSocialSite$1; sid: string }): ISocialInformation;
   // 判断 URL 命中的社交站点（供 content-script 引导做轻量预筛，避免把 social 包打进引导，见 issue #1467）
   matchSocialPage(url: string): TSupportSocialSite$1 | null;
+
+  /**
+   * content-script 引导用：判断该 URL 命中哪个站点，以及该站点是否允许注入。
+   * 只需 host → siteId 一项判断，因此不再把整份 metadata store 搬到页面上下文。
+   */
+  matchSitePage(url: string): { siteId: TSiteID; allowContentScript: boolean } | null;
   getSocialRecommendations(data?: {
     flush?: boolean;
     enrichment?: "all" | "none" | "visible";
@@ -213,11 +231,16 @@ interface ProtocolMap extends TMessageMap {
   deleteKeepUploadTask(taskId: TKeepUploadTaskKey): void;
   clearKeepUploadTasks(): void;
 
-  // 2.8 Lightweight list queries (for CLI discovery)
+  // 2.8 种子收藏 ( utils/torrentFavorite )
+  getTorrentFavorites(): ITorrentFavoriteItem[];
+  createTorrentFavorites(data: { torrents: ITorrent[]; favCategories?: string[]; comment?: string }): number;
+  deleteTorrentFavorites(keys: TTorrentFavoriteKey[]): void;
+
+  // 2.9 Lightweight list queries (for CLI discovery)
   getSiteList(): Array<{ id: string; name: string; url: string; offline: boolean }>;
   getDownloaderList(): Array<{ id: string; name: string; type: string; enabled: boolean; address: string }>;
 
-  // 2.9 Native messaging bridge control
+  // 2.10 Native messaging bridge control
   nativeBridgeGetStatus(): BridgeStatus;
   nativeBridgeSetEnabled(data: boolean): BridgeStatus;
   nativeBridgeReconnect(): BridgeStatus;

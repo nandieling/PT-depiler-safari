@@ -11,6 +11,7 @@ export const siteMetadata: ISiteMetadata = {
   version: 1,
   id: "hdvideo",
   name: "HDVideo",
+  tags: ["影视", "综合"],
 
   collaborator: ["koal"],
 
@@ -23,9 +24,9 @@ export const siteMetadata: ISiteMetadata = {
   officialGroupPattern: [/(-HDVWEB|-HDVMV)/i],
 
   userInfo: {
-    ...SchemaMetadata.userInfo!,
+    ...SchemaMetadata.userInfo,
     selectors: {
-      ...SchemaMetadata.userInfo!.selectors!,
+      ...SchemaMetadata.userInfo.selectors!,
       bonus: {
         selector: [
           "#top-stats-bar a.top-stat[href*='mybonus.php'] b",

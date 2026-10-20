@@ -1,6 +1,6 @@
 import { intersection, isEqual, toMerged } from "es-toolkit";
 import { formatDate } from "date-fns";
-import { saveAs } from "file-saver";
+import { saveBlobLocally } from "./saveBlobLocally.ts";
 import { getBackupServer, IBackupData, IBackupFileInfo } from "@ptd/backupServer";
 import { backupDataToZipBlob, hasBackupRetentionToApply, pruneBackupFiles } from "@ptd/backupServer/utils.ts";
 import AbstractBackupServer from "@ptd/backupServer/AbstractBackupServer.ts";
@@ -25,6 +25,7 @@ export const storageKey = [
   "userInfo",
   "searchResultSnapshot",
   "keepUploadTask",
+  "torrentFavorite",
 ] as TExtensionStorageKey[];
 
 /**
@@ -122,7 +123,8 @@ export async function applyBackupRetention(
   const list = (await backupServerInstance.list()) ?? [];
 
   const backupFiles = list
-    .filter((item) => /^PTD_backup_\d{16}\.zip$/.test(item.filename))
+    // 文件名格式必须与下方 exportBackupData() 里生成的 backupFilename 保持一致
+    .filter((item) => /^PTD_backup_\d{8}T\d{4}\.zip$/.test(item.filename))
     .sort((a, b) => b.time - a.time); // 按备份时间从新到旧排序
   const [deletedFiles] = pruneBackupFiles(
     backupFiles.filter((item) => item.filename !== keepFilename),
@@ -169,9 +171,9 @@ export async function exportBackupData(
   logger({ msg: `Exporting backup data to ${backupServerId}`, data: { backupFields, backupFilename } });
   if (backupServerId === "local") {
     const zipBlob = await backupDataToZipBlob(backupData, encryptionKey);
-    // Safari 无 chrome.downloads，只能在页面上下文内用 file-saver 保存
+    // Safari 无 chrome.downloads，只能在扩展页面内用 <a download> 保存
     if (__BROWSER__ === "safari") {
-      saveAs(zipBlob, backupFilename);
+      saveBlobLocally(zipBlob, backupFilename);
     } else {
       const blobUrl = URL.createObjectURL(zipBlob);
       try {

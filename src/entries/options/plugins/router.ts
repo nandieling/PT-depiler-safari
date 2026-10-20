@@ -76,6 +76,12 @@ export const routes: RouteRecordRaw[] = [
         component: () => import("../views/Overview/SearchResultSnapshot/Index.vue"),
       },
       {
+        path: "/my-collection",
+        name: "MyCollection",
+        meta: { icon: "mdi-star" },
+        component: () => import("../views/Overview/MyCollection/Index.vue"),
+      },
+      {
         path: "/media-server-entity",
         name: "MediaServerEntity",
         meta: { icon: "mdi-play-network" },

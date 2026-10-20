@@ -2,6 +2,7 @@
 import { computed, ref, onMounted } from "vue";
 import { useI18n } from "vue-i18n";
 import type { CAddTorrentOptions } from "@ptd/downloader";
+import { datePathTemplateVars, expandPathTemplate } from "@ptd/downloader/utils/pathTemplate.ts";
 
 import type { IKeepUploadTask, TKeepUploadTaskKey } from "@/shared/types.ts";
 import { sendMessage } from "@/messages.ts";
@@ -66,9 +67,9 @@ async function deleteTask(task: IKeepUploadTask) {
   try {
     await sendMessage("deleteKeepUploadTask", task.id);
     tasks.value = tasks.value.filter((t) => t.id !== task.id);
-    runtimeStore.showSnakebar(t("KeepUploadTask.deleteSuccess"), { color: "success" });
+    runtimeStore.showSnackbar(t("KeepUploadTask.deleteSuccess"), { color: "success" });
   } catch (e) {
-    runtimeStore.showSnakebar(t("KeepUploadTask.deleteError"), { color: "error" });
+    runtimeStore.showSnackbar(t("KeepUploadTask.deleteError"), { color: "error" });
   }
 }
 
@@ -82,9 +83,9 @@ async function deleteSelectedTasks() {
     }
     tasks.value = tasks.value.filter((t) => !selectedTasks.value.includes(t.id));
     selectedTasks.value = [];
-    runtimeStore.showSnakebar(t("KeepUploadTask.deleteSuccess"), { color: "success" });
+    runtimeStore.showSnackbar(t("KeepUploadTask.deleteSuccess"), { color: "success" });
   } catch (e) {
-    runtimeStore.showSnakebar(t("KeepUploadTask.deleteError"), { color: "error" });
+    runtimeStore.showSnackbar(t("KeepUploadTask.deleteError"), { color: "error" });
   }
 }
 
@@ -94,9 +95,9 @@ async function clearAllTasks() {
   try {
     await sendMessage("clearKeepUploadTasks", undefined);
     tasks.value = [];
-    runtimeStore.showSnakebar(t("KeepUploadTask.clearSuccess"), { color: "success" });
+    runtimeStore.showSnackbar(t("KeepUploadTask.clearSuccess"), { color: "success" });
   } catch (e) {
-    runtimeStore.showSnakebar(t("KeepUploadTask.clearError"), { color: "error" });
+    runtimeStore.showSnackbar(t("KeepUploadTask.clearError"), { color: "error" });
   }
 }
 
@@ -106,7 +107,7 @@ async function sendTorrentsToDownloader(task: IKeepUploadTask, items: IKeepUploa
 
   const downloader = metadataStore.downloaders[task.downloadOptions.downloaderId];
   if (!downloader) {
-    runtimeStore.showSnakebar("下载器不存在", { color: "error" });
+    runtimeStore.showSnackbar("下载器不存在", { color: "error" });
     return;
   }
 
@@ -119,9 +120,7 @@ async function sendTorrentsToDownloader(task: IKeepUploadTask, items: IKeepUploa
         "torrent.category": String(item.category ?? ""),
         "torrent.site": item.site,
         "torrent.siteName": await metadataStore.getSiteName(item.site),
-        "date:YYYY": formatDate(now, "yyyy"),
-        "date:MM": formatDate(now, "MM"),
-        "date:DD": formatDate(now, "dd"),
+        ...datePathTemplateVars(now),
       };
       const addTorrentOptions: CAddTorrentOptions = {
         localDownload: true,
@@ -132,10 +131,9 @@ async function sendTorrentsToDownloader(task: IKeepUploadTask, items: IKeepUploa
       };
 
       for (const key of ["savePath", "label"] as const) {
-        if (!addTorrentOptions[key]) continue;
-        for (const [templateKey, value] of Object.entries(replacements)) {
-          addTorrentOptions[key] = addTorrentOptions[key]!.replaceAll(`$${templateKey}$`, value);
-        }
+        const value = addTorrentOptions[key];
+        if (!value) continue;
+        addTorrentOptions[key] = expandPathTemplate(value, replacements) ?? value;
       }
 
       const result = await sendMessage("downloadTorrent", {
@@ -155,11 +153,11 @@ async function sendTorrentsToDownloader(task: IKeepUploadTask, items: IKeepUploa
         throw new Error(result.errorMessage || item.title);
       }
     }
-    runtimeStore.showSnakebar(t("KeepUploadTask.sendSingleSuccess"), { color: "success" });
+    runtimeStore.showSnackbar(t("KeepUploadTask.sendSingleSuccess"), { color: "success" });
   } catch (e) {
     const rawReason = e instanceof Error ? e.message : String(e);
     const reason = rawReason.trim() === "Fails." ? t("KeepUploadTask.qBittorrentLegacyFails") : rawReason;
-    runtimeStore.showSnakebar(t("KeepUploadTask.sendSingleErrorWithReason", { reason }), { color: "error" });
+    runtimeStore.showSnackbar(t("KeepUploadTask.sendSingleErrorWithReason", { reason }), { color: "error" });
   }
 }
 
@@ -178,9 +176,9 @@ async function setAsBaseTorrent(task: IKeepUploadTask, itemIndex: number) {
     await sendMessage("updateKeepUploadTask", task);
     // 强制刷新表格
     tableKey.value++;
-    runtimeStore.showSnakebar(t("KeepUploadTask.setBaseSuccess"), { color: "success" });
+    runtimeStore.showSnackbar(t("KeepUploadTask.setBaseSuccess"), { color: "success" });
   } catch (e) {
-    runtimeStore.showSnakebar(t("KeepUploadTask.setBaseError"), { color: "error" });
+    runtimeStore.showSnackbar(t("KeepUploadTask.setBaseError"), { color: "error" });
   }
 }
 
@@ -210,9 +208,9 @@ async function copyLinksToClipboard(task: IKeepUploadTask) {
   const urls = task.items.map((item) => item.url).join("\n");
   try {
     await navigator.clipboard.writeText(urls);
-    runtimeStore.showSnakebar(t("KeepUploadTask.copySuccess", { count: task.items.length }), { color: "success" });
+    runtimeStore.showSnackbar(t("KeepUploadTask.copySuccess", { count: task.items.length }), { color: "success" });
   } catch (e) {
-    runtimeStore.showSnakebar(t("KeepUploadTask.copyError"), { color: "error" });
+    runtimeStore.showSnackbar(t("KeepUploadTask.copyError"), { color: "error" });
   }
 }
 </script>
