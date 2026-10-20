@@ -46,6 +46,23 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: "pnpm"
 
+      # 人工解决冲突的提交也推在本分支上，存在开启中的 PR 时接着它继续，不要重来
+      - name: 复用已有的同步分支
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if ! git fetch --no-tags --quiet origin "refs/heads/${SYNC_BRANCH}:refs/remotes/origin/${SYNC_BRANCH}"; then
+            echo "同步分支尚不存在，基于 ${GITHUB_REF_NAME} 新建。"
+            exit 0
+          fi
+          open_pr="$(gh pr list --head "${SYNC_BRANCH}" --state open --json number --jq '.[0].number // empty')"
+          if [[ -z "${open_pr}" ]]; then
+            echo "同步分支上没有开启中的 PR，基于 ${GITHUB_REF_NAME} 重新生成。"
+            exit 0
+          fi
+          git reset --hard --quiet "refs/remotes/origin/${SYNC_BRANCH}"
+          echo "已接着 ${SYNC_BRANCH} 的现有提交继续（PR #${open_pr}）。"
+
       - name: 解析上游目标提交
         id: compare
         env:
@@ -67,6 +84,7 @@ jobs:
         id: apply
         env:
           UPSTREAM_REF: ${{ steps.compare.outputs.target }}
+          UPSTREAM_MARK_ON_CONFLICT: "1"
         run: |
           status=0
           bash scripts/update-upstream.sh 2>&1 | tee "${RUNNER_TEMP}/sync.log" || status=$?
@@ -128,7 +146,7 @@ jobs:
 
       - name: 推送同步分支
         if: steps.compare.outputs.changed == 'true'
-        run: git push --force origin "HEAD:refs/heads/${SYNC_BRANCH}"
+        run: git push --force-with-lease origin "HEAD:refs/heads/${SYNC_BRANCH}"
 
       - name: 创建或更新 PR
         if: steps.compare.outputs.changed == 'true'
@@ -156,7 +174,7 @@ jobs:
                 echo "- [ ] ${conflicted}"
               done < "${RUNNER_TEMP}/conflicts.txt"
               echo
-              echo "冲突标记（\`<<<<<<<\`）已保留在文件中，构建验证已跳过。"
+              echo "冲突标记（\`<<<<<<<\`）已保留在文件中，构建验证已跳过。\`.upstream-synced\` 已推进到 \`${TARGET:0:8}\`，把冲突解掉再合并即视为同步完成。"
             else
               echo
               echo "\`pnpm check\`、三端 WebExtension 构建与 \`pnpm build:safari-app\` 均已通过。"

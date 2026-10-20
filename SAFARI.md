@@ -48,7 +48,7 @@ Upstream expects Firefox to use `background.page` (`src/entries/background/firef
 
 ### Automation
 
-`.github/workflows/upstream-sync.yml` runs the script on a schedule against the upstream default branch, validates the result with `pnpm check`, all three web builds and `pnpm build:safari-app` on a macOS runner, then opens a pull request from `codex/upstream-sync` and squash-merges it when everything is green. A conflicted run pushes the conflict markers to a draft pull request with the affected files listed instead. `.github/workflows/build.yml` packages the three extension directories and the unsigned macOS app on every push to `main`, and publishes them as a release when a tag is pushed.
+`.github/workflows/upstream-sync.yml` runs the script on a schedule against the upstream default branch, validates the result with `pnpm check`, all three web builds and `pnpm build:safari-app` on a macOS runner, then opens a pull request from `codex/upstream-sync` and squash-merges it when everything is green. A conflicted run pushes the conflict markers to a draft pull request with the affected files listed instead, and bumps `.upstream-synced` in the same commit (`UPSTREAM_MARK_ON_CONFLICT=1`) so merging the resolved pull request is enough. While that pull request is open the next run keeps working on top of the branch, so manual resolution commits pushed there are never overwritten. `.github/workflows/build.yml` packages the three extension directories and the unsigned macOS app on every push to `main`, and publishes them as a release when a tag is pushed.
 
 ## Safari platform differences
 

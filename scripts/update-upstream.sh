@@ -19,6 +19,9 @@
 #   UPSTREAM_REPO    上游仓库地址，默认 https://github.com/pt-plugins/PT-depiler.git
 #   UPSTREAM_BRANCH  未指定 UPSTREAM_REF 时同步的上游分支，默认 master
 #   UPSTREAM_REF     同步目标：上游分支名或 40 位提交号，用于回放到指定版本
+#   UPSTREAM_MARK_ON_CONFLICT
+#                    设为 1 时即使有冲突也把 .upstream-synced 推进到本次目标。
+#                    自动同步工作流用它：冲突的解法会随 PR 一起评审，合并即视为同步完成。
 
 set -euo pipefail
 
@@ -120,7 +123,13 @@ if [[ ${apply_status} -ne 0 ]] || [[ ${#conflicts[@]} -gt 0 ]]; then
   else
     echo "补丁未能完整应用（git apply 退出码 ${apply_status}），请检查 git status。"
   fi
-  echo "基线未更新，仍为 ${base_commit}。"
+  if [[ "${UPSTREAM_MARK_ON_CONFLICT:-0}" == "1" ]]; then
+    printf '%s\n' "${target_commit}" >"${marker_file}"
+    git add "${marker_file}"
+    echo "基线已推进到 ${target_commit}：解决冲突后合并即可，不必再跑一次同步。"
+  else
+    echo "基线未更新，仍为 ${base_commit}。"
+  fi
   exit 1
 fi
 
