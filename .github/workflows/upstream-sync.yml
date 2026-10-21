@@ -85,6 +85,7 @@ jobs:
         env:
           UPSTREAM_REF: ${{ steps.compare.outputs.target }}
           UPSTREAM_MARK_ON_CONFLICT: "1"
+          UPSTREAM_BUMP_VERSION: "1"
         run: |
           status=0
           bash scripts/update-upstream.sh 2>&1 | tee "${RUNNER_TEMP}/sync.log" || status=$?
@@ -100,6 +101,7 @@ jobs:
           {
             echo "state=${state}"
             echo "conflicts=${conflicts}"
+            echo "version=$(node -p "require('./package.json').version")"
           } >> "$GITHUB_OUTPUT"
           if [[ "${state}" == "error" ]]; then
             echo "::error::上游补丁未能应用（退出码 ${status}），本次不推送。"
@@ -126,6 +128,7 @@ jobs:
           BASE: ${{ steps.compare.outputs.base }}
           TARGET: ${{ steps.compare.outputs.target }}
           STATE: ${{ steps.apply.outputs.state }}
+          VERSION: ${{ steps.apply.outputs.version }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -134,7 +137,7 @@ jobs:
             echo "没有需要提交的改动。"
             exit 0
           fi
-          subject="sync: 同步上游 PT-depiler 至 ${TARGET:0:8}"
+          subject="sync: 同步上游 PT-depiler 至 ${TARGET:0:8}（${VERSION}）"
           body="上游范围 \`${BASE:0:8}\` -> \`${TARGET:0:8}\`，由 scripts/update-upstream.sh 三方合并生成；本工作流已在合并前跑过类型检查与全部构建。"
           if [[ "${STATE}" == "conflict" ]]; then
             body="${body}"$'\n\n'"以下文件保留了冲突标记，需要人工合并："
@@ -155,12 +158,15 @@ jobs:
           BASE: ${{ steps.compare.outputs.base }}
           TARGET: ${{ steps.compare.outputs.target }}
           STATE: ${{ steps.apply.outputs.state }}
+          VERSION: ${{ steps.apply.outputs.version }}
           MERGE_INPUT: ${{ inputs.merge }}
         run: |
           {
             echo "本 PR 由 GitHub Actions 自动生成：把上游 [PT-depiler](https://github.com/${UPSTREAM_API_REPO}) 的改动三方合并到 Safari 移植版上。"
             echo
             echo "上游范围：[\`${BASE:0:8}\`](https://github.com/${UPSTREAM_API_REPO}/commit/${BASE}) -> [\`${TARGET:0:8}\`](https://github.com/${UPSTREAM_API_REPO}/commit/${TARGET})"
+            echo
+            echo "移植版版本号升到 **${VERSION}**：合并进 main 后 \`build.yml\` 会自动发布同名 Release。"
             echo
             echo "### 上游提交"
             echo '```'
@@ -181,7 +187,7 @@ jobs:
             fi
           } > "${RUNNER_TEMP}/pr.md"
 
-          title="sync: 同步上游 PT-depiler 至 ${TARGET:0:8}"
+          title="sync: 同步上游 PT-depiler 至 ${TARGET:0:8}（${VERSION}）"
           number="$(gh pr list --head "${SYNC_BRANCH}" --state open --json number --jq '.[0].number // empty')"
           if [[ -n "${number}" ]]; then
             gh pr edit "${number}" --title "${title}" --body-file "${RUNNER_TEMP}/pr.md"

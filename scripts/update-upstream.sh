@@ -19,6 +19,9 @@
 #   UPSTREAM_REPO    上游仓库地址，默认 https://github.com/pt-plugins/PT-depiler.git
 #   UPSTREAM_BRANCH  未指定 UPSTREAM_REF 时同步的上游分支，默认 master
 #   UPSTREAM_REF     同步目标：上游分支名或 40 位提交号，用于回放到指定版本
+#   UPSTREAM_BUMP_VERSION
+#                    设为 1 时把移植版自己的版本号最后一位 +1（1.3 -> 1.4），
+#                    自动同步工作流用它，做到"每同步一次就发一版"。
 #   UPSTREAM_MARK_ON_CONFLICT
 #                    设为 1 时即使有冲突也把 .upstream-synced 推进到本次目标。
 #                    自动同步工作流用它：冲突的解法会随 PR 一起评审，合并即视为同步完成。
@@ -91,6 +94,12 @@ fi
 
 # package.json 会被整体替换成上游内容，先记住移植版自己的版本号
 port_version="$(git show HEAD:package.json | node -p "JSON.parse(require('fs').readFileSync(0, 'utf8')).version")"
+if [[ "${UPSTREAM_BUMP_VERSION:-0}" == "1" ]]; then
+  # 自动发版：不动上游版本号，只把移植版自己的最后一位加一
+  bumped="$(node -e 'const v = process.argv[1].split(".").map(Number); v[v.length - 1] += 1; process.stdout.write(v.join("."));' "${port_version}")"
+  echo "移植版版本号：${port_version} -> ${bumped}"
+  port_version="${bumped}"
+fi
 
 patch_file="$(mktemp -t ptd-upstream)"
 trap 'rm -f "${patch_file}"' EXIT
@@ -141,3 +150,4 @@ echo "已同步到 ${target_commit}。请依次执行："
 echo "  pnpm install --no-frozen-lockfile"
 echo "  pnpm check"
 echo "  pnpm build:dist-safari"
+echo "（package.json 的 version 现为 $(node -p "require('./package.json').version")）"

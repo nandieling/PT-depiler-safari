@@ -115,14 +115,14 @@ open safari-project/PT-Depiler/PT-Depiler.xcodeproj
 
 ## 常用构建命令
 
-| 命令 | 用途 | 输出 |
-| --- | --- | --- |
-| `pnpm check` | TypeScript/Vue 类型检查 | 无 |
-| `pnpm build:dist-safari` | 仅构建 Safari WebExtension | `dist-safari/` |
-| `pnpm build:safari-project` | 构建 WebExtension 并生成 Xcode 工程 | `safari-project/` |
-| `pnpm build:safari-app` | 生成工程并执行未签名 Xcode 构建 | `safari-project/DerivedData/` |
-| `pnpm build:dist` | 构建 Chrome 版本 | `dist-chrome/` |
-| `pnpm build:dist-firefox` | 构建 Firefox 版本 | `dist-firefox/` |
+| 命令                        | 用途                                | 输出                          |
+| --------------------------- | ----------------------------------- | ----------------------------- |
+| `pnpm check`                | TypeScript/Vue 类型检查             | 无                            |
+| `pnpm build:dist-safari`    | 仅构建 Safari WebExtension          | `dist-safari/`                |
+| `pnpm build:safari-project` | 构建 WebExtension 并生成 Xcode 工程 | `safari-project/`             |
+| `pnpm build:safari-app`     | 生成工程并执行未签名 Xcode 构建     | `safari-project/DerivedData/` |
+| `pnpm build:dist`           | 构建 Chrome 版本                    | `dist-chrome/`                |
+| `pnpm build:dist-firefox`   | 构建 Firefox 版本                   | `dist-firefox/`               |
 
 可通过环境变量修改生成工程的配置：
 
@@ -138,15 +138,15 @@ pnpm build:safari-project
 
 仓库带两条工作流，都以默认分支 `main` 为目标：
 
-| 工作流 | 触发方式 | 作用 |
-| --- | --- | --- |
-| [`build.yml`](./.github/workflows/build.yml) | Push `main`、推送标签、Pull Request、手动 | 类型检查与站点定义校验，打包三端 WebExtension，在 macOS runner 上构建 Safari App；推送标签时发布 Release |
-| [`upstream-sync.yml`](./.github/workflows/upstream-sync.yml) | 每天 09:20（北京时间）、手动 | 检查上游新版本，自动三方合并、验证构建并开 PR |
+| 工作流                                                       | 触发方式                                  | 作用                                                                                                                    |
+| ------------------------------------------------------------ | ----------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| [`build.yml`](./.github/workflows/build.yml)                 | Push `main`、推送标签、Pull Request、手动 | 类型检查与站点定义校验，打包三端 WebExtension，在 macOS runner 上构建 Safari App；在 `main` 上按 `version` 发布 Release |
+| [`upstream-sync.yml`](./.github/workflows/upstream-sync.yml) | 每天 09:20（北京时间）、手动              | 检查上游新版本，自动三方合并、验证构建并开 PR                                                                           |
 
 - `PT-Depiler-<版本>-<基线>-chrome-extension.zip` / `-firefox-extension.zip` / `-safari-extension.zip`：解压后即为可直接加载的扩展目录
 - `PT-Depiler-<版本>-<基线>-macOS.app.zip`：在 GitHub macOS runner 上构建的宿主 App，未使用开发者证书，供测试使用。从浏览器下载后需先执行 `xattr -dr com.apple.quarantine PT-Depiler.app` 去除隔离标记；要在 Safari 中长期使用仍需用自己的开发者证书签名
 
-发布新版本时推送一个与 `package.json` 中 `version` 同名的标签即可，例如 `git tag 1.3 && git push origin 1.3`，`build.yml` 会创建同名 Release 并附上全部产物。macOS job 在 Pull Request 上跳过以节省 runner 时间；若默认分支不是 `main`，请修改两个工作流中的 `branches`。
+`build.yml` 会按 `package.json` 里的 `version` 在 `main` 上发布 Release 并附上全部产物（同名 Release 已存在就跳过，重发先删掉它），手动推一个同名标签也走同一条路。自动同步每合并一次就把版本号最后一位加一，所以每次跟随上游都会发一个新版本；想自己发版，改 `version` 推到 `main` 即可。macOS job 在 Pull Request 上跳过以节省 runner 时间；若默认分支不是 `main`，请修改两个工作流中的 `branches`。
 
 ## 与上游同步
 
@@ -173,7 +173,7 @@ UPSTREAM_REPO=<地址> pnpm update:upstream                       # 换仓库
 
 ### 自动跟随上游
 
-`upstream-sync.yml` 每天检查一次上游。没有新版本时直接结束；有新版本时应用补丁，在 macOS runner 上依次跑 `pnpm check`、三端构建和 `pnpm build:safari-app`，全部通过就在 `codex/upstream-sync` 分支上开 PR 并默认自动 squash 合并。PR 上会跑一次 `build.yml`（跳过 macOS job），合并进 `main` 后再跑一次并上传新产物，所以同步提交里不要写 `[skip ci]`——squash 后的提交信息取自 PR 标题，写了会连打包一起跳过。验证失败或存在冲突时，PR 保持 Draft 并列出需要人工合并的文件。手动触发时可以指定上游分支或提交号，也可以取消自动合并。
+`upstream-sync.yml` 每天检查一次上游。没有新版本时直接结束；有新版本时应用补丁，在 macOS runner 上依次跑 `pnpm check`、三端构建和 `pnpm build:safari-app`，全部通过就在 `codex/upstream-sync` 分支上开 PR（顺手把移植版版本号最后一位加一）并默认自动 squash 合并。PR 上会跑一次 `build.yml`（跳过 macOS job），合并进 `main` 后再跑一次并上传新产物，所以同步提交里不要写 `[skip ci]`——squash 后的提交信息取自 PR 标题，写了会连打包一起跳过。验证失败或存在冲突时，PR 保持 Draft 并列出需要人工合并的文件。手动触发时可以指定上游分支或提交号，也可以取消自动合并。
 
 你在同步分支上追加的解决提交会被接着用：分支上还有开启中的 PR 时，下一次运行会在你的提交之上继续打新的上游补丁，不会覆盖重来。
 
