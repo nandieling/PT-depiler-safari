@@ -98,10 +98,14 @@ jobs:
           elif [[ "${status}" != "0" ]]; then
             state=error
           fi
+          version="$(node -p "require('./package.json').version")"
+          base_version="$(git show HEAD:package.json | node -p "JSON.parse(require('fs').readFileSync(0, 'utf8')).version")"
           {
             echo "state=${state}"
             echo "conflicts=${conflicts}"
-            echo "version=$(node -p "require('./package.json').version")"
+            echo "version=${version}"
+            echo "base_version=${base_version}"
+            if [[ "${version}" != "${base_version}" ]]; then echo "bumped=true"; else echo "bumped=false"; fi
           } >> "$GITHUB_OUTPUT"
           if [[ "${state}" == "error" ]]; then
             echo "::error::上游补丁未能应用（退出码 ${status}），本次不推送。"
@@ -129,6 +133,7 @@ jobs:
           TARGET: ${{ steps.compare.outputs.target }}
           STATE: ${{ steps.apply.outputs.state }}
           VERSION: ${{ steps.apply.outputs.version }}
+          BUMPED: ${{ steps.apply.outputs.bumped }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -137,7 +142,10 @@ jobs:
             echo "没有需要提交的改动。"
             exit 0
           fi
-          subject="sync: 同步上游 PT-depiler 至 ${TARGET:0:8}（${VERSION}）"
+          subject="sync: 同步上游 PT-depiler 至 ${TARGET:0:8}"
+          if [[ "${BUMPED}" == "true" ]]; then
+            subject="${subject}（${VERSION}）"
+          fi
           body="上游范围 \`${BASE:0:8}\` -> \`${TARGET:0:8}\`，由 scripts/update-upstream.sh 三方合并生成；本工作流已在合并前跑过类型检查与全部构建。"
           if [[ "${STATE}" == "conflict" ]]; then
             body="${body}"$'\n\n'"以下文件保留了冲突标记，需要人工合并："
@@ -159,6 +167,7 @@ jobs:
           TARGET: ${{ steps.compare.outputs.target }}
           STATE: ${{ steps.apply.outputs.state }}
           VERSION: ${{ steps.apply.outputs.version }}
+          BUMPED: ${{ steps.apply.outputs.bumped }}
           MERGE_INPUT: ${{ inputs.merge }}
         run: |
           {
@@ -166,7 +175,11 @@ jobs:
             echo
             echo "上游范围：[\`${BASE:0:8}\`](https://github.com/${UPSTREAM_API_REPO}/commit/${BASE}) -> [\`${TARGET:0:8}\`](https://github.com/${UPSTREAM_API_REPO}/commit/${TARGET})"
             echo
-            echo "移植版版本号升到 **${VERSION}**：合并进 main 后 \`build.yml\` 会自动发布同名 Release。"
+            if [[ "${BUMPED}" == "true" ]]; then
+              echo "移植版版本号升到 **${VERSION}**：合并进 main 后 \`build.yml\` 会自动发布同名 Release。"
+            else
+              echo "上游本次改动不涉及同步范围内的代码，移植版版本号保持 **${VERSION}**，本次不发版。"
+            fi
             echo
             echo "### 上游提交"
             echo '```'
@@ -187,7 +200,10 @@ jobs:
             fi
           } > "${RUNNER_TEMP}/pr.md"
 
-          title="sync: 同步上游 PT-depiler 至 ${TARGET:0:8}（${VERSION}）"
+          title="sync: 同步上游 PT-depiler 至 ${TARGET:0:8}"
+          if [[ "${BUMPED}" == "true" ]]; then
+            title="${title}（${VERSION}）"
+          fi
           number="$(gh pr list --head "${SYNC_BRANCH}" --state open --json number --jq '.[0].number // empty')"
           if [[ -n "${number}" ]]; then
             gh pr edit "${number}" --title "${title}" --body-file "${RUNNER_TEMP}/pr.md"
