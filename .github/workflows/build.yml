@@ -22,6 +22,9 @@ env:
 jobs:
   check:
     name: 类型与站点定义检查
+    # 自动同步的 PR 首次触发时跳过：同一提交刚由 upstream-sync 验证过，而且它几秒内
+    # 就被合并，PR 检查只会因为合并 ref 消失而空跑。人工往同步分支推解决方案时照常检查
+    if: github.event_name != 'pull_request' || github.head_ref != 'codex/upstream-sync' || github.event.action != 'opened'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
