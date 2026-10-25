@@ -144,6 +144,10 @@ export const useConfigStore = defineStore("config", {
         itemsPerPage: 25,
         sortBy: [{ key: "createdAt", order: "desc" }],
       },
+      KeepUploadTask: {
+        itemsPerPage: 10,
+        sortBy: [{ key: "time", order: "desc" }],
+      },
       SetDownloader: {
         itemsPerPage: 10,
         sortBy: [{ key: "enabled", order: "desc" }],
@@ -181,6 +185,7 @@ export const useConfigStore = defineStore("config", {
       showUnreadMessage: true,
       showUserName: true,
       normalizeLevelName: true,
+      limitLevelNameTdWidth: true,
       showLevelRequirement: true,
       onlyShowUserLevelRequirement: true,
       showNextLevelInTable: false,

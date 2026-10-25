@@ -101,7 +101,6 @@
       "time": "Created At",
       "title": "Title"
     },
-    "title": "Reseed Tasks",
     "torrentCount": "Torrents: ",
     "updateError": "Update failed",
     "updateSuccess": "Updated successfully",
@@ -394,6 +393,7 @@
         "alive": "Relative Time",
         "aliveWeek": "Relative Weeks"
       },
+      "limitLevelNameTdWidth": "Limit level column width",
       "multiOpen": "Open in batch",
       "noSiteSelectedCancelRefresh": "No site selected, refresh cancelled",
       "noSiteSelectedRefreshAll": "No site selected, refreshing all sites by default",

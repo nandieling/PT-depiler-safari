@@ -169,11 +169,11 @@ UPSTREAM_BRANCH=main pnpm update:upstream                      # 换分支
 UPSTREAM_REPO=<地址> pnpm update:upstream                       # 换仓库
 ```
 
-`package.json` 整体采用上游内容，再由 `scripts/sync-package-json.mjs` 写回移植版自己的 `version` 和 Safari 相关脚本，版本号差异因此不会造成冲突。其余无法自动合并的文件会留下冲突标记，脚本按 `conflicted-file: <路径>` 列出它们并以退出码 1 结束；本地跑完仍要人工确认，`.upstream-synced` 也保持不动（自动同步工作流带 `UPSTREAM_MARK_ON_CONFLICT=1`，那种情况下基线会随冲突一起推进，合并 PR 即视为同步完成）。上游标签不会被拉取，也不会被推送回本仓库。
+`package.json` 整体采用上游内容，再由 `scripts/sync-package-json.mjs` 写回移植版自己的 `version` 和 Safari 相关脚本，版本号差异因此不会造成冲突；同一趟同步还会把 Xcode 模板里的 `MARKETING_VERSION` 占位值改成同样的版本号（生成工程时本来就会以 `package.json` 为准，这一步只是不让模板停在旧版本上误导人）。其余无法自动合并的文件会留下冲突标记，脚本按 `conflicted-file: <路径>` 列出它们并以退出码 1 结束；本地跑完仍要人工确认，`.upstream-synced` 也保持不动（自动同步工作流带 `UPSTREAM_MARK_ON_CONFLICT=1`，那种情况下基线会随冲突一起推进，合并 PR 即视为同步完成）。上游标签不会被拉取，也不会被推送回本仓库。
 
 ### 自动跟随上游
 
-`upstream-sync.yml` 每天检查一次上游。没有新版本时直接结束；有新版本时应用补丁，在 macOS runner 上依次跑 `pnpm check`、三端构建和 `pnpm build:safari-app`，全部通过就在 `codex/upstream-sync` 分支上开 PR（顺手把移植版版本号最后一位加一）并默认自动 squash 合并。这类 PR 的开箱检查会跳过 `build.yml`（同一提交刚验证过，而且它几秒内就被合并，PR 检查只会空跑），合并进 `main` 后 `build.yml` 会跑一次并上传新产物，所以同步提交里不要写 `[skip ci]`——squash 后的提交信息取自 PR 标题，写了会连打包一起跳过。存在冲突时 PR 保持 Draft 并列出需要人工合并的文件，往该分支再推提交就会触发完整的 `build.yml`，方便人工解决冲突后立刻看到检查结果。手动触发时可以指定上游分支或提交号，也可以取消自动合并。
+`upstream-sync.yml` 每天检查一次上游。没有新版本时直接结束；有新版本时应用补丁，在 macOS runner 上依次跑 `pnpm check`、三端构建和 `pnpm build:safari-app`，全部通过就在 `codex/upstream-sync` 分支上开 PR（顺手把移植版版本号最后一位加一）并默认自动 squash 合并。这类 PR 的开箱检查会跳过 `build.yml`（同一提交刚验证过，而且它几秒内就被合并，PR 检查只会空跑），合并进 `main` 后 `build.yml` 会跑一次并上传新产物，所以同步提交里不要写 `[skip ci]`——squash 后的提交信息取自 PR 标题，写了会连打包一起跳过。存在冲突时 PR 保持 Draft 并列出需要人工合并的文件，往该分支再推提交就会触发完整的 `build.yml`，方便人工解决冲突后立刻看到检查结果。脚本每次都会扫描同步范围内的冲突标记，上一次遗留的未解决冲突也会被一并列出并跳过构建，因此卡住的 Draft PR 就是在等人合并，不会伪装成一次构建失败。手动触发时可以指定上游分支或提交号，也可以取消自动合并。
 
 你在同步分支上追加的解决提交会被接着用：分支上还有开启中的 PR 时，下一次运行会在你的提交之上继续打新的上游补丁，不会覆盖重来。
 

@@ -123,19 +123,47 @@ git checkout "${target_commit}" -- package.json
 PORT_VERSION="${port_version}" node "${script_dir}/sync-package-json.mjs" "${repo_dir}/package.json"
 git add package.json
 
+# Xcode 模板里的 MARKETING_VERSION 只是占位（生成工程时以 package.json 为准），
+# 一并跟着版本号走，免得它停在旧版本上让人误判 App 的实际版本
+template_project="${repo_dir}/safari/PT-Depiler/PT-Depiler.xcodeproj/project.pbxproj"
+if [[ -f "${template_project}" ]]; then
+  MARKETING_VERSION="${port_version}" perl -0pi -e \
+    's/MARKETING_VERSION = [^;]+;/MARKETING_VERSION = $ENV{MARKETING_VERSION};/g' "${template_project}"
+  git add "safari/PT-Depiler/PT-Depiler.xcodeproj/project.pbxproj"
+fi
+
+unmerged="$(git diff --name-only --diff-filter=U)"
 conflicts=()
 while IFS= read -r conflicted; do
-  [[ -n "${conflicted}" ]] && conflicts+=("${conflicted}") || true
-done < <(git diff --name-only --diff-filter=U)
+  if [[ -n "${conflicted}" ]]; then
+    conflicts+=("${conflicted}")
+  fi
+done <<<"${unmerged}"
 
-if [[ ${apply_status} -ne 0 ]] || [[ ${#conflicts[@]} -gt 0 ]]; then
+# 上一次运行留下的冲突标记也一起找出来：本次补丁没报冲突不代表分支是干净的，
+# 放任它们只会让它们一路混到 pnpm check，最后剩一句难懂的 TS1185
+stale=()
+while IFS= read -r marked; do
+  if [[ -n "${marked}" ]] && { [[ -z "${unmerged}" ]] || ! grep -Fxq -- "${marked}" <<<"${unmerged}"; }; then
+    stale+=("${marked}")
+  fi
+done < <(git grep -lI -E "^(<<<<<<<|>>>>>>>)" -- "${sync_paths[@]}" 2>/dev/null || true)
+
+if [[ ${apply_status} -ne 0 ]] || [[ ${#conflicts[@]} -gt 0 ]] || [[ ${#stale[@]} -gt 0 ]]; then
   echo
   if [[ ${#conflicts[@]} -gt 0 ]]; then
     echo "上游改动已打补丁，但以下文件需要人工合并（搜索 <<<<<<< ）："
     for conflicted in "${conflicts[@]}"; do
       printf 'conflicted-file: %s\n' "${conflicted}"
     done
-  else
+  fi
+  if [[ ${#stale[@]} -gt 0 ]]; then
+    echo "以下文件残留着上一次同步的冲突标记，请一并人工处理："
+    for marked in "${stale[@]}"; do
+      printf 'conflicted-file: %s\n' "${marked}"
+    done
+  fi
+  if [[ ${#conflicts[@]} -eq 0 ]] && [[ ${#stale[@]} -eq 0 ]]; then
     echo "补丁未能完整应用（git apply 退出码 ${apply_status}），请检查 git status。"
   fi
   if [[ "${UPSTREAM_MARK_ON_CONFLICT:-0}" == "1" ]]; then
