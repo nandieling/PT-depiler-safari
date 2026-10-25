@@ -123,6 +123,15 @@ git checkout "${target_commit}" -- package.json
 PORT_VERSION="${port_version}" node "${script_dir}/sync-package-json.mjs" "${repo_dir}/package.json"
 git add package.json
 
+# Xcode 模板里的 MARKETING_VERSION 只是占位（生成工程时以 package.json 为准），
+# 一并跟着版本号走，免得它停在旧版本上让人误判 App 的实际版本
+template_project="${repo_dir}/safari/PT-Depiler/PT-Depiler.xcodeproj/project.pbxproj"
+if [[ -f "${template_project}" ]]; then
+  MARKETING_VERSION="${port_version}" perl -0pi -e \
+    's/MARKETING_VERSION = [^;]+;/MARKETING_VERSION = $ENV{MARKETING_VERSION};/g' "${template_project}"
+  git add "safari/PT-Depiler/PT-Depiler.xcodeproj/project.pbxproj"
+fi
+
 unmerged="$(git diff --name-only --diff-filter=U)"
 conflicts=()
 while IFS= read -r conflicted; do

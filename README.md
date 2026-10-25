@@ -169,7 +169,7 @@ UPSTREAM_BRANCH=main pnpm update:upstream                      # 换分支
 UPSTREAM_REPO=<地址> pnpm update:upstream                       # 换仓库
 ```
 
-`package.json` 整体采用上游内容，再由 `scripts/sync-package-json.mjs` 写回移植版自己的 `version` 和 Safari 相关脚本，版本号差异因此不会造成冲突。其余无法自动合并的文件会留下冲突标记，脚本按 `conflicted-file: <路径>` 列出它们并以退出码 1 结束；本地跑完仍要人工确认，`.upstream-synced` 也保持不动（自动同步工作流带 `UPSTREAM_MARK_ON_CONFLICT=1`，那种情况下基线会随冲突一起推进，合并 PR 即视为同步完成）。上游标签不会被拉取，也不会被推送回本仓库。
+`package.json` 整体采用上游内容，再由 `scripts/sync-package-json.mjs` 写回移植版自己的 `version` 和 Safari 相关脚本，版本号差异因此不会造成冲突；同一趟同步还会把 Xcode 模板里的 `MARKETING_VERSION` 占位值改成同样的版本号（生成工程时本来就会以 `package.json` 为准，这一步只是不让模板停在旧版本上误导人）。其余无法自动合并的文件会留下冲突标记，脚本按 `conflicted-file: <路径>` 列出它们并以退出码 1 结束；本地跑完仍要人工确认，`.upstream-synced` 也保持不动（自动同步工作流带 `UPSTREAM_MARK_ON_CONFLICT=1`，那种情况下基线会随冲突一起推进，合并 PR 即视为同步完成）。上游标签不会被拉取，也不会被推送回本仓库。
 
 ### 自动跟随上游
 
