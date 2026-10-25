@@ -22,7 +22,9 @@
 #   UPSTREAM_BUMP_VERSION
 #                    设为 1 时把移植版自己的版本号最后一位 +1（1.3 -> 1.4），
 #                    自动同步工作流用它，做到"上游每更新一次就发一版"。
-#                    上游在本次同步范围内没有实际改动时不会加一，空同步不会发版。
+#                    上游在本次同步范围内没有实际改动时不会加一，空同步不会发版；
+#                    同步分支上已经挂着比 main 更新的一个版本时也不会再加一，
+#                    避免一个迟迟没被合并的冲突 PR 每天吃掉一个版本号。
 #   UPSTREAM_MARK_ON_CONFLICT
 #                    设为 1 时即使有冲突也把 .upstream-synced 推进到本次目标。
 #                    自动同步工作流用它：冲突的解法会随 PR 一起评审，合并即视为同步完成。
@@ -104,9 +106,32 @@ has_upstream_changes=0
 port_version="$(git show HEAD:package.json | node -p "JSON.parse(require('fs').readFileSync(0, 'utf8')).version")"
 if [[ "${UPSTREAM_BUMP_VERSION:-0}" == "1" ]] && [[ "${has_upstream_changes}" == "1" ]]; then
   # 自动发版：不动上游版本号，只把移植版自己的最后一位加一
-  bumped="$(node -e 'const v = process.argv[1].split(".").map(Number); v[v.length - 1] += 1; process.stdout.write(v.join("."));' "${port_version}")"
-  echo "移植版版本号：${port_version} -> ${bumped}"
-  port_version="${bumped}"
+  main_version=""
+  if git rev-parse --verify --quiet refs/remotes/origin/main >/dev/null; then
+    main_version="$(git show refs/remotes/origin/main:package.json 2>/dev/null |
+      node -p "JSON.parse(require('fs').readFileSync(0, 'utf8')).version" 2>/dev/null || true)"
+  fi
+  bumped="$(PORT_VERSION="${port_version}" MAIN_VERSION="${main_version}" node -e '
+    const parse = (v) => v.split(".").map(Number);
+    const cmp = (a, b) => {
+      for (let i = 0; i < Math.max(a.length, b.length); i += 1) {
+        const diff = (a[i] || 0) - (b[i] || 0);
+        if (diff) return diff;
+      }
+      return 0;
+    };
+    const current = parse(process.env.PORT_VERSION);
+    const main = process.env.MAIN_VERSION ? parse(process.env.MAIN_VERSION) : null;
+    // 分支上已经有比 main 新的版本号，说明上一个同步 PR 还挂着，不再继续加
+    const next = main && cmp(current, main) > 0 ? current : current.slice(0, -1).concat(current[current.length - 1] + 1);
+    process.stdout.write(next.join("."));
+  ')"
+  if [[ "${bumped}" == "${port_version}" ]]; then
+    echo "移植版版本号保持 ${port_version}：main 上还是 ${main_version}，上一个同步 PR 尚未合并。"
+  else
+    echo "移植版版本号：${port_version} -> ${bumped}"
+    port_version="${bumped}"
+  fi
 elif [[ "${UPSTREAM_BUMP_VERSION:-0}" == "1" ]]; then
   echo "上游在本次同步范围内没有改动，移植版版本号保持 ${port_version}。"
 fi

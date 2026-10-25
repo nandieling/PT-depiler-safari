@@ -194,4 +194,13 @@ jobs:
             echo "- \`PT-Depiler-${tag}-*-macOS.app.zip\`：在 GitHub macOS runner 上构建的 Safari App，未使用开发者证书，仅做 ad-hoc 签名。从浏览器下载后需先执行 \`xattr -dr com.apple.quarantine PT-Depiler.app\` 去除隔离标记；要在 Safari 中长期使用仍需用自己的开发者证书签名。"
           } > "${notes}"
 
-          gh release create "${tag}" --latest --target "${GITHUB_SHA}" --title "PT-Depiler ${tag}" --notes-file "${notes}" "${assets[@]}"
+          if ! gh release create "${tag}" --latest --target "${GITHUB_SHA}" --title "PT-Depiler ${tag}" --notes-file "${notes}" "${assets[@]}"; then
+            # 连着推两次 main 时，两个运行可能同时抢着建同一个 Release
+            if gh release view "${tag}" >/dev/null 2>&1; then
+              echo "Release ${tag} 已被并行的运行创建，改为补传本次产物。"
+              gh release upload "${tag}" "${assets[@]}" --clobber
+            else
+              echo "::error::无法创建 Release ${tag}；如果是不再需要的残留标签/Release，先删掉再重跑。"
+              exit 1
+            fi
+          fi

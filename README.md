@@ -146,7 +146,7 @@ pnpm build:safari-project
 - `PT-Depiler-<版本>-<基线>-chrome-extension.zip` / `-firefox-extension.zip` / `-safari-extension.zip`：解压后即为可直接加载的扩展目录
 - `PT-Depiler-<版本>-<基线>-macOS.app.zip`：在 GitHub macOS runner 上构建的宿主 App，未使用开发者证书，供测试使用。从浏览器下载后需先执行 `xattr -dr com.apple.quarantine PT-Depiler.app` 去除隔离标记；要在 Safari 中长期使用仍需用自己的开发者证书签名
 
-`build.yml` 会按 `package.json` 里的 `version` 在 `main` 上发布 Release 并附上全部产物（同名 Release 已存在就跳过，重发先删掉它），手动推一个同名标签也走同一条路。上游确有代码更新时，自动同步会把版本号最后一位加一，所以每次跟随上游都会发一个新版本；上游只改 issue 模板这类同步范围外的内容时不会空发版。想自己发版，改 `version` 推到 `main` 即可。macOS job 在 Pull Request 上跳过以节省 runner 时间；若默认分支不是 `main`，请修改两个工作流中的 `branches`。
+`build.yml` 会按 `package.json` 里的 `version` 在 `main` 上发布 Release 并附上全部产物（同名 Release 已存在就跳过，重发先删掉它），手动推一个同名标签也走同一条路。上游确有代码更新时，自动同步会把版本号最后一位加一，所以每次跟随上游都会发一个新版本；上游只改 issue 模板这类同步范围外的内容时不会空发版，一个挂着没合并的冲突 PR 也不会每天吃掉一个版本号。想自己发版，改 `version` 推到 `main` 即可。macOS job 在 Pull Request 上跳过以节省 runner 时间；若默认分支不是 `main`，请修改两个工作流中的 `branches`。
 
 ## 与上游同步
 
