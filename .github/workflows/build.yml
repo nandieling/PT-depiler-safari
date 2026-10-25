@@ -8,6 +8,12 @@ on:
   pull_request:
     branches: ["main"]
   workflow_dispatch:
+  # 自动同步用自己的 token 合并 PR，这样产生的 main push 不会触发工作流，
+  # 所以再挂一条：同步工作流跑完就打包发布
+  workflow_run:
+    workflows: ["Sync upstream"]
+    types: [completed]
+    branches: ["main"]
 
 permissions:
   contents: write
@@ -24,7 +30,9 @@ jobs:
     name: 类型与站点定义检查
     # 自动同步的 PR 首次触发时跳过：同一提交刚由 upstream-sync 验证过，而且它几秒内
     # 就被合并，PR 检查只会因为合并 ref 消失而空跑。人工往同步分支推解决方案时照常检查
-    if: github.event_name != 'pull_request' || github.head_ref != 'codex/upstream-sync' || github.event.action != 'opened'
+    if: >-
+      (github.event_name != 'pull_request' || github.head_ref != 'codex/upstream-sync' || github.event.action != 'opened') &&
+      (github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
