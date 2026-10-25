@@ -173,7 +173,7 @@ UPSTREAM_REPO=<地址> pnpm update:upstream                       # 换仓库
 
 ### 自动跟随上游
 
-`upstream-sync.yml` 每天检查一次上游。没有新版本时直接结束；有新版本时应用补丁，在 macOS runner 上依次跑 `pnpm check`、三端构建和 `pnpm build:safari-app`，全部通过就在 `codex/upstream-sync` 分支上开 PR（顺手把移植版版本号最后一位加一）并默认自动 squash 合并。这类 PR 的开箱检查会跳过 `build.yml`（同一提交刚验证过，而且它几秒内就被合并，PR 检查只会空跑）。自动合并是用工作流自己的 token 完成的，这样产生的 `main` push 按 GitHub 的规则不会触发任何工作流（1.4 就是这么漏掉 Release 的），因此 `build.yml` 还挂了 `workflow_run`：同步工作流一结束就打包并发布。手动往 `main` 推提交时仍然别写 `[skip ci]`，那个标记只对 push 与 Pull Request 事件生效。存在冲突时 PR 保持 Draft 并列出需要人工合并的文件，往该分支再推提交就会触发完整的 `build.yml`，方便人工解决冲突后立刻看到检查结果。脚本每次都会扫描同步范围内的冲突标记，上一次遗留的未解决冲突也会被一并列出并跳过构建，因此卡住的 Draft PR 就是在等人合并，不会伪装成一次构建失败。手动触发时可以指定上游分支或提交号，也可以取消自动合并。
+`upstream-sync.yml` 每天检查一次上游。没有新版本时直接结束；有新版本时应用补丁，在 macOS runner 上依次跑 `pnpm check`、三端构建和 `pnpm build:safari-app`，全部通过就在 `codex/upstream-sync` 分支上开 PR（顺手把移植版版本号最后一位加一）并默认自动 squash 合并。这类 PR 的开箱检查会跳过 `build.yml`（同一提交刚验证过，而且它几秒内就被合并，PR 检查只会空跑）。自动合并是用工作流自己的 token 完成的，这样产生的 `main` push 按 GitHub 的规则不会触发任何工作流（1.4 就是这么漏掉 Release 的），因此 `build.yml` 还挂了 `workflow_run`：同步工作流一结束就打包并发布。这条触发会先过一道几秒钟的 `gate`，当前版本号已经有 Release 就直接跳过，免得每天没有上游更新时也白跑一遍全量打包。手动往 `main` 推提交时仍然别写 `[skip ci]`，那个标记只对 push 与 Pull Request 事件生效。存在冲突时 PR 保持 Draft 并列出需要人工合并的文件，往该分支再推提交就会触发完整的 `build.yml`，方便人工解决冲突后立刻看到检查结果。脚本每次都会扫描同步范围内的冲突标记，上一次遗留的未解决冲突也会被一并列出并跳过构建，因此卡住的 Draft PR 就是在等人合并，不会伪装成一次构建失败。手动触发时可以指定上游分支或提交号，也可以取消自动合并。
 
 你在同步分支上追加的解决提交会被接着用：分支上还有开启中的 PR 时，下一次运行会在你的提交之上继续打新的上游补丁，不会覆盖重来。
 

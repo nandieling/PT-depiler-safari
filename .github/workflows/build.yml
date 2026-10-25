@@ -26,11 +26,40 @@ env:
   NODE_VERSION: ">=23.7.0"
 
 jobs:
+  # 由同步工作流触发时，先确认这次真的缺一个 Release，否则每天的例行检查都会白跑一遍全量打包
+  gate:
+    name: 是否需要构建
+    runs-on: ubuntu-latest
+    outputs:
+      build: ${{ steps.decide.outputs.build }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: 判断
+        id: decide
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [[ "${GITHUB_EVENT_NAME}" != "workflow_run" ]]; then
+            echo "build=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          version="$(node -p "require('./package.json').version")"
+          if gh release view "${version}" >/dev/null 2>&1; then
+            echo "Release ${version} 已存在，跳过这次由同步工作流触发的构建。"
+            echo "build=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "Release ${version} 还没有，开始打包。"
+          echo "build=true" >> "$GITHUB_OUTPUT"
+
   check:
     name: 类型与站点定义检查
+    needs: gate
     # 自动同步的 PR 首次触发时跳过：同一提交刚由 upstream-sync 验证过，而且它几秒内
     # 就被合并，PR 检查只会因为合并 ref 消失而空跑。人工往同步分支推解决方案时照常检查
     if: >-
+      needs.gate.outputs.build == 'true' &&
       (github.event_name != 'pull_request' || github.head_ref != 'codex/upstream-sync' || github.event.action != 'opened') &&
       (github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-latest
