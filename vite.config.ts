@@ -186,7 +186,7 @@ export default defineConfig({
           },
         },
         "{{firefox}}.content_security_policy": {
-          extension_pages: "script-src 'self';",
+          extension_pages: "script-src 'self'; img-src 'self'",
         },
         "{{safari}}.content_security_policy": {
           extension_pages: "script-src 'self';",
