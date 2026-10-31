@@ -4,7 +4,7 @@ import { isEmpty, unset } from "es-toolkit/compat";
 import type { IUserInfo } from "@ptd/site";
 import { EResultParseStatus } from "@ptd/site";
 
-import { onMessage, sendMessage } from "@/messages.ts";
+import { onMessage, sendMessage, USER_INFO_QUEUE_CANCELLED } from "@/messages.ts";
 import type { IMetadataPiniaStorageSchema, IConfigPiniaStorageSchema, TUserInfoStorageSchema } from "@/shared/types.ts";
 
 import { logger } from "./logger.ts";
@@ -13,7 +13,7 @@ import { getSiteInstance } from "./site.ts";
 const flushQueue = new PQueue({ concurrency: 1 }); // 默认设置为 1，避免并发搜索
 const setSiteLastUserInfoQueue = new PQueue({ concurrency: 1 }); // 专门用于 setSiteLastUserInfo 的队列
 
-flushQueue.on("active", async () => {
+flushQueue.addEventListener("active", async () => {
   const configStoreRaw = (await sendMessage("getExtStorage", "config")) as IConfigPiniaStorageSchema;
   // Safari user-info requests are relayed through content scripts. Existing
   // installations may still have the upstream default of 5 persisted, which
@@ -29,10 +29,26 @@ flushQueue.on("active", async () => {
 });
 
 onMessage("cancelUserInfoQueue", () => {
+  // p-queue 10 起 clear() 会以 AbortError 结束被移除的排队任务，由 getSiteUserInfoResult 归一化后抛给调用方
   flushQueue.clear();
 });
 
+/**
+ * p-queue 10 起 `clear()`（用户取消刷新）会以 AbortError 结束被移除的排队任务。
+ * AbortError 是 DOMException，跨 `sendMessage` 边界序列化后无法可靠识别，
+ * 这里统一归一化成稳定的错误信息，调用方用 `isUserInfoQueueCancelledError()` 判定。
+ */
+function normalizeUserInfoQueueCancellation<T>(task: Promise<T>): Promise<T> {
+  return task.catch((error: unknown) => {
+    if ((error as Error | undefined)?.name === "AbortError") {
+      throw new Error(USER_INFO_QUEUE_CANCELLED);
+    }
+    throw error;
+  });
+}
+
 export async function getSiteUserInfoResult(siteId: string) {
+<<<<<<< ours
   try {
     return (await flushQueue.add(async () => {
       logger({ msg: `getSiteUserInfoResult for ${siteId}` });
@@ -50,6 +66,21 @@ export async function getSiteUserInfoResult(siteId: string) {
           logger({ msg: `Failed to extend cookies for site ${siteId}`, level: "debug" });
         }
       }
+=======
+  const task = flushQueue.add(async () => {
+    logger({ msg: `getSiteUserInfoResult for ${siteId}` });
+
+    // 获取站点实例和配置信息
+    const site = await getSiteInstance<"private">(siteId);
+
+    // 尝试延长cookies
+    try {
+      await sendMessage("checkAndExtendCookies", site.url);
+    } catch (error) {
+      // 静默处理错误，不影响用户信息获取流程
+      logger({ msg: `Failed to extend cookies for site ${siteId}`, level: "debug" });
+    }
+>>>>>>> theirs
 
       // 获取历史信息
       const metadataStoreRaw = (await sendMessage("getExtStorage", "metadata")) as IMetadataPiniaStorageSchema;
@@ -86,6 +117,7 @@ export async function getSiteUserInfoResult(siteId: string) {
         }
       }
 
+<<<<<<< ours
       await setSiteLastUserInfo(userInfo);
       return userInfo!;
     }))!;
@@ -105,6 +137,13 @@ export async function getSiteUserInfoResult(siteId: string) {
     await setSiteLastUserInfo(failedUserInfo).catch(() => undefined);
     return failedUserInfo;
   }
+=======
+    await setSiteLastUserInfo(userInfo);
+    return userInfo!;
+  });
+
+  return (await normalizeUserInfoQueueCancellation(task))!;
+>>>>>>> theirs
 }
 
 onMessage("getSiteUserInfoResult", async ({ data: siteId }) => await getSiteUserInfoResult(siteId));
