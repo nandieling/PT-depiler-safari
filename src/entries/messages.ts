@@ -283,6 +283,9 @@ function createMessageWrapper<PM extends ProtocolMap>(original: {
     // 深拷贝数据，避免 Vue 响应式 Proxy 或其他不可序列化对象进入消息链路引发 DataCloneError。
     // 原实现仅对 firefox 生效，Chrome/Edge 下同样存在该问题（见 issue #1431），
     // 故对所有浏览器统一执行深拷贝。
+    //
+    // ⚠️ onMessage 的**返回值**同样由浏览器序列化（Chrome 用 JSON、Firefox 用 structured clone），
+    // 同样不能是响应式 ref / Proxy，否则 Firefox 下回包克隆失败、调用方永远拿不到数据（issue #1716）。
     if (typeof data !== "undefined") {
       data = JSON.parse(JSON.stringify(data));
     }
@@ -305,3 +308,15 @@ export const { sendMessage, onMessage } = createMessageWrapper(
     logger: __BROWSER__ == "firefox" || isDebug ? console : undefined,
   }),
 );
+
+/**
+ * 用户信息刷新队列被主动取消（`cancelUserInfoQueue` → p-queue 的 `clear()`）时抛出的稳定错误信息。
+ *
+ * p-queue 10 起 `clear()` 会以 AbortError 结束被移除的排队任务，但 AbortError 是 DOMException，
+ * 经 `sendMessage` 跨上下文序列化后无法可靠识别，因此 offscreen 侧统一归一化成这个信息再抛给调用方。
+ */
+export const USER_INFO_QUEUE_CANCELLED = "USER_INFO_QUEUE_CANCELLED";
+
+export function isUserInfoQueueCancelledError(error: unknown): boolean {
+  return (error as Error | undefined)?.message === USER_INFO_QUEUE_CANCELLED;
+}

@@ -29,12 +29,16 @@ export const siteMetadata: ISiteMetadata = {
         { name: "Nintendo DS", value: "nds" },
         { name: "Nintendo GameCube", value: "gamecube" },
         { name: "Nintendo Switch", value: "switch" },
+        // 2026-11-06 Jackett dd2cad4d 新增 /switch2 分类（站方新增 Switch2 平台，映射到 Console/NDS）
+        { name: "Nintendo Switch 2", value: "switch2" },
         { name: "Nintendo Wii", value: "wii" },
         { name: "Nintendo Wii U", value: "wiiu" },
         { name: "PlayStation", value: "ps1" },
         { name: "PlayStation 2", value: "ps2" },
         { name: "PlayStation 3", value: "ps3" },
         { name: "PlayStation 4", value: "ps4" },
+        // 2026-11-01 Jackett a0f3e4d5 新增 /ps5 分类（站方新增 PS5 平台，映射到 Console/PS4）
+        { name: "PlayStation 5", value: "ps5" },
         { name: "PlayStation Portable", value: "psp" },
         { name: "PlayStation Vita", value: "psvita" },
         { name: "Saturn", value: "saturn" },

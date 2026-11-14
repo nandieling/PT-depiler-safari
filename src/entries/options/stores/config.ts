@@ -12,6 +12,8 @@ import { useMetadataStore } from "./metadata.ts";
 const deprecatedConfigKeys = [
   "myDataTableControl.tableFontSize", // v0.0.4.961 废弃
   "myDataTableControl.joinTimeWeekOnly", // 已废弃，使用 joinTimeFormat 替代
+  "myDataTableControl.limitLevelNameTdWidth", // 已废弃，由 tableColumnFit 替代
+  "searchEntifyControl.limitTorrentTitleTdWidth", // 已废弃，由 tableColumnFit 替代
 ];
 
 export const defaultTimelineBackgroundColor = "#455A64";
@@ -52,6 +54,20 @@ export const useConfigStore = defineStore("config", {
         }
       }
 
+      // 优惠信息展示形式只允许 tags / factor / both（防止旧版本/手工改动写入非法值）
+      const promotionDisplay = state.searchEntifyControl?.promotionDisplay;
+      if (promotionDisplay !== undefined && !["tags", "factor", "both", "none"].includes(promotionDisplay)) {
+        state.searchEntifyControl.promotionDisplay = "tags";
+        needsSave = true;
+      }
+
+      // 标题显示方式只允许 end / middle / scroll（防止旧版本/手工改动写入非法值）
+      const titleDisplayMode = state.searchEntifyControl?.titleDisplayMode;
+      if (titleDisplayMode !== undefined && !["end", "middle", "scroll"].includes(titleDisplayMode)) {
+        state.searchEntifyControl.titleDisplayMode = "end";
+        needsSave = true;
+      }
+
       if (needsSave) {
         context.store.$save();
       }
@@ -71,6 +87,7 @@ export const useConfigStore = defineStore("config", {
     enableTableMultiSort: false,
     tableActionColumnPosition: "end",
     tableActionColumnFixed: false,
+    tableColumnFit: true,
 
     contextMenus: {
       enabled: true,
@@ -185,7 +202,6 @@ export const useConfigStore = defineStore("config", {
       showUnreadMessage: true,
       showUserName: true,
       normalizeLevelName: true,
-      limitLevelNameTdWidth: true,
       showLevelRequirement: true,
       onlyShowUserLevelRequirement: true,
       showNextLevelInTable: false,
@@ -253,11 +269,13 @@ export const useConfigStore = defineStore("config", {
     searchEntifyControl: {
       showSiteName: true,
       showTorrentTag: true,
+      promotionDisplay: "tags",
       showTorrentSubtitle: true,
+      showTorrentCover: false,
+      titleDisplayMode: "end",
       showSocialInformation: true,
       socialInformationSearchOnNewTab: true,
       uploadAtFormatAsAlive: false,
-      limitTorrentTitleTdWidth: true,
       highlightSameSizeTorrent: false,
       maxTagCountBeforeGroup: 0,
       hiddenTagNames: [],

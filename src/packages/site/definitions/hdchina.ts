@@ -132,6 +132,9 @@ export const siteMetadata: ISiteMetadata = {
   tags: ["影视", "音乐", "纪录片", "综合"],
   timezoneOffset: "+0800",
   collaborator: ["IITII"],
+  // 本地图标沿用既有的 public/icons/site/hdchina.jpg（32×32）。
+  // 注意：该文件的实际内容是 ICO（魔数 00 00 01 00）而非 JPEG，只是沿用了 .jpg 扩展名；
+  // 因为自动解析只查 `<id>.png / .ico / .svg`，.jpg 必须靠这里显式声明才能命中，勿删。
   favicon: "./hdchina.jpg",
 
   type: "private",
@@ -346,7 +349,16 @@ export const siteMetadata: ISiteMetadata = {
         filters: [{ name: "parseNumber" }],
       },
       time: {
-        selector: "td.t_time",
+        // 站点设置「时间显示类型」为「已去时间」时，列表时间渲染为
+        // <td class="t_time"><span title="2026-11-07 22:54:11">21时18分</span></td>；
+        // 「发生时间」时为 <td class="t_time">2026-11-07 22:54:11</td>。
+        // 有 span[title] 时直接取 title 值（绝对时间），没有则取单元格文本；两种形态都走 parseTime。
+        // （不能写成 selector + attr:"title"：attr 对命中的 td.t_time 生效，「发生时间」下无
+        // title 会取到空串，绝对时间反而丢失。）
+        elementProcess: (element: HTMLElement) => {
+          const span = element.querySelector("span[title]");
+          return span?.getAttribute("title") ?? element.innerText;
+        },
         filters: [{ name: "parseTime", args: ["yyyy-MM-dd HH:mm:ss"] }],
       },
       seeders: {
@@ -532,6 +544,48 @@ export default class HDChina extends NexusPHP {
     });
 
     return data?.message ?? null;
+  }
+
+  /**
+   * 本站的下载链接是签名形式（download.php?hash=...），而 download.php?id=xxx 会直接返回 404。
+   *
+   * 从种子列表页拖拽标题链接时，前端拿到的是 details.php?id=xxx&hit=1，NexusPHP 基类会把它
+   * 改写成 download.php?id=xxx；因此这里先请求详情页，再用 detail.selectors.link 取出签名链接。
+   */
+  public override async getTorrentDownloadLink(torrent: ITorrent): Promise<string> {
+    const link = torrent.link ?? "";
+    if (link.startsWith("magnet:") || link.includes("download.php?hash=")) {
+      return super.getTorrentDownloadLink(torrent);
+    }
+
+    // 只有详情页 / 按 id 下载的链接需要回详情页解析签名链接；其它外部链接保持原样，
+    // 避免把从别的站点拖进来的种子地址误当成详情页请求。
+    const isDetailLink =
+      link.includes("details.php") || link.includes("torrents.php?id=") || link.includes("download.php?id=");
+    let detailUrl = isDetailLink ? link : "";
+    if (!detailUrl && !link && (torrent.url?.includes("details.php") || torrent.url?.includes("torrents.php?id="))) {
+      detailUrl = torrent.url;
+    }
+    if (!detailUrl && !link && torrent.id) {
+      detailUrl = this.fixLink(`/details.php?id=${torrent.id}`, { baseURL: this.url });
+    }
+
+    const linkSelector = this.metadata.detail?.selectors?.link;
+    if (!detailUrl || !linkSelector) {
+      return super.getTorrentDownloadLink(torrent);
+    }
+
+    const { data } = await this.request<any>({
+      url: detailUrl,
+      responseType: "document",
+      ...(this.metadata.detail?.requestConfig ?? {}),
+    });
+    const signedLink = this.getFieldData(data, linkSelector) as string | undefined;
+    if (signedLink) {
+      torrent.link = this.fixLink(signedLink, { baseURL: this.url, url: detailUrl });
+    }
+
+    return super.getTorrentDownloadLink(torrent);
   }
 
   private async fetchCsrfToken(): Promise<string> {

@@ -30,6 +30,7 @@ export interface IConfigPiniaStorageSchema {
   enableTableMultiSort: boolean; // 是否启用表格多列排序
   tableActionColumnPosition: "start" | "end"; // 表格中 key 为 action 的操作列的位置（行首 / 行尾）
   tableActionColumnFixed: boolean; // 表格横向滚动时是否固定 key 为 action 的操作列
+  tableColumnFit: boolean; // 表格列宽是否自动适应内容（默认开启）
 
   // 用于存储 v-data-table 表格的展示
   tableBehavior: Record<UiTableBehaviorKey, UiTableBehaviorItem>;
@@ -73,7 +74,6 @@ export interface IConfigPiniaStorageSchema {
     // 是否使用站点定义中的 levelRequirements 中的名称来统一显示等级名称，如果不使用，则直接显示为 getUserInfo 获取到的信息
     normalizeLevelName: boolean;
     // 是否限制等级列的最大宽度，防止等级要求过长导致表格布局混乱
-    limitLevelNameTdWidth: boolean;
     // 是否展示升级情况及站点等级情况
     showLevelRequirement: boolean;
 
@@ -155,8 +155,14 @@ export interface IConfigPiniaStorageSchema {
     showSiteName: boolean;
     // 是否展示种子的Tags信息
     showTorrentTag: boolean;
+    // 优惠信息的展示形式：tags 仅标签（默认）、factor 仅数值、both 两者都显示、none 不显示
+    promotionDisplay: "tags" | "factor" | "both" | "none";
     // 是否展示种子的副标题信息
     showTorrentSubtitle: boolean;
+    // 是否展示种子自带的封面图片（需要该种子提供 cover 信息）
+    showTorrentCover: boolean;
+    // 种子标题超长时的显示方式：end 末端省略（默认）、middle 中间省略、scroll 滚动
+    titleDisplayMode: "end" | "middle" | "scroll";
     // 是否展示种子额外的媒体评分信息（需要该种子提供 ext_{imdb, douban} 信息）
     showSocialInformation: boolean;
     // 对种子额外的媒体评分信息中 “搜索” 是另开窗口还是当前窗口 （需要 showSocialInformation 为 true 才有实际效果）
@@ -164,7 +170,6 @@ export interface IConfigPiniaStorageSchema {
     // 是否使用 time_alive(过去时间) 来展示，如果不使用，则使用 time_added(发生时间) 来展示，默认不使用
     uploadAtFormatAsAlive: boolean;
     // 是否限制种子标题列的最大宽度，防止过长导致表格布局混乱
-    limitTorrentTitleTdWidth: boolean;
     // 按种子大小排序时，是否用色条标记出相同大小的种子（ #1411 ）
     highlightSameSizeTorrent: boolean;
     // 种子标签数量超过多少个时使用分组显示（0表示不限制）

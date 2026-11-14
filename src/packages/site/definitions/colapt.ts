@@ -1,5 +1,5 @@
 import type { AxiosRequestConfig, AxiosResponse } from "axios";
-import type { ISearchInput, ISiteMetadata, ITorrent, IUserInfo } from "../types";
+import type { ISearchInput, ISiteMetadata, ITorrent } from "../types";
 import { NeedLoginError } from "../types";
 import PrivateSite from "../schemas/AbstractPrivateSite";
 
@@ -22,7 +22,7 @@ interface IReelCoreGroup {
 
 export const siteMetadata: ISiteMetadata = {
   id: "colapt",
-  version: 1,
+  version: 2,
   name: "可乐",
   aka: ["Cola", "ColaPT"],
   description: "使用 ReelCore 的影视站点；积分表示瓶盖，“发布帖子数”表示核子可乐余额。晋级需达标并消耗两种积分。",
@@ -31,7 +31,6 @@ export const siteMetadata: ISiteMetadata = {
   type: "private",
   schema: "ReelCore",
   urls: ["https://www.colapt.com/"],
-  favicon: "https://www.colapt.com/brand/cola/favicon-black-red.ico",
 
   category: [
     {
@@ -139,6 +138,9 @@ export const siteMetadata: ISiteMetadata = {
           },
           uploads: { selector: "contributions.torrents" },
           bonus: { selector: "stats.points", filters: [Number] },
+          // 做种体积：资料页的 stats.seeding_bytes 就是字节数（2026-11-13 #1706 反馈的真实响应确认），
+          // 不用再去 /me/activity 分页累加（那种做法还要处理 projection_status，且多打 N 次接口）
+          seedingSize: { selector: "stats.seeding_bytes", filters: [{ name: "parseNumber" }] },
         },
       },
       {
@@ -160,7 +162,6 @@ export const siteMetadata: ISiteMetadata = {
       },
       {
         requestConfig: { url: "/api/v1/me/stats" },
-        fields: ["seedingSize"],
         selectors: {
           uploaded: { selector: "billed_uploaded" },
           downloaded: { selector: "billed_downloaded" },
@@ -287,38 +288,14 @@ export default class ColaPT extends PrivateSite {
   ): Partial<ITorrent> {
     if (row instanceof Element) return super.parseTorrentRowForTags(torrent, row, searchConfig);
 
-    torrent.tags = [];
+    // promotion 的 num/den 就是「实际计费比例」，直接作为量系数，标签交给归一层派生
     const promotion = (row as IReelCoreGroup).versions[0].promotion;
     if (promotion) {
-      const download = promotion.download.num / promotion.download.den;
-      const upload = promotion.upload.num / promotion.upload.den;
-      if (download < 1) {
-        torrent.tags.push({ name: download === 0 ? "Free" : `${download * 100}%`, color: "blue" });
-      }
-      if (upload > 1) torrent.tags.push({ name: `${upload}xUp`, color: "green" });
+      torrent.downloadVolumeFactor = promotion.download.num / promotion.download.den;
+      torrent.uploadVolumeFactor = promotion.upload.num / promotion.upload.den;
     }
-    return torrent;
-  }
 
-  protected async parseUserInfoForSeedingSize(userInfo: IUserInfo, stats: { seeding: number }): Promise<IUserInfo> {
-    let seedingSize = 0;
-    if (stats.seeding > 0) {
-      let totalPages = 1;
-      for (let page = 1; page <= totalPages; page++) {
-        const { data } = await this.request<{
-          items: { size_bytes: string | null }[];
-          total_pages: number;
-          projection_status: string;
-        }>({ url: "/api/v1/me/activity", params: { state: "seeding", page, page_size: 100 } });
-        // 统计不可用时保留未知，不能把缺失的做种量记成零。
-        if (data.projection_status !== "current" || data.items.some((item) => item.size_bytes === null))
-          return userInfo;
-        totalPages = data.total_pages;
-        seedingSize += data.items.reduce((sum, item) => sum + Number(item.size_bytes), 0);
-      }
-    }
-    userInfo.seedingSize = seedingSize;
-    return userInfo;
+    return torrent;
   }
 
   public override async getTorrentDownloadLink(torrent: ITorrent): Promise<string> {
