@@ -7,11 +7,13 @@ import appCss from "./app.css?inline";
 import { createApp } from "vue";
 
 import App from "./App.vue";
+import { PTD_DATA_KEY } from "./injectionKeys.ts";
+import { updatePageType, type IPtdData } from "./utils.ts";
 import { piniaInstance as pinia } from "@/options/plugins/pinia.ts";
 import { i18nInstance as i18n } from "@/options/plugins/i18n.ts";
 import { vuetifyInstance as vuetify } from "@/options/plugins/vuetify.ts";
 
-export function mountApp(document: Document, data: any = {}) {
+export function mountApp(document: Document, data: IPtdData = {}) {
   // 检查站点原来有没有 vuetify 的样式，如果有，则缓存其内容以便于我们的Vuetify挂载后恢复其内容
   const siteVuetifyThemePer = document.querySelector("#vuetify-theme-stylesheet");
   const hasSiteVuetifyThemePre = siteVuetifyThemePer !== null && siteVuetifyThemePer instanceof HTMLLinkElement;
@@ -73,7 +75,7 @@ export function mountApp(document: Document, data: any = {}) {
 
   // 挂载 Vue 应用
   const app = createApp(App).use(pinia).use(i18n).use(vuetify);
-  app.provide("ptd_data", data); // 提供数据给 Vue 应用
+  app.provide(PTD_DATA_KEY, data); // 提供数据给 Vue 应用
   app.mount(appMountElement);
 
   // 此时 vuetify 已挂载了我们的主题样式，需要移动到shadow Dom中以免影响网站样式
@@ -94,7 +96,18 @@ export function mountApp(document: Document, data: any = {}) {
 
   // 防止某些网站动态修改 body，从而移除我们的 contentRoot，因此使用 MutationObserver 监听 body 的变化
   // 一旦发现 contentRoot 被移除，则重新挂载应用
+  //
+  // 顺带在这里比对地址：SPA 站（Vue / React）在同一份文档里换路由时不会重新注入 content script，
+  // 侧边栏会一直挂着上一个页面的按钮组（例如从列表页进详情页还显示「高级列表」）。content script 与页面
+  // 分属两个 JS 世界，改不了页面的 history.pushState，只能靠 location.href 的变化察觉路由切换，
+  // 这里借已有的 DOM 变动回调顺带比较一次，不额外起定时器。
+  let lastHref = document.location.href;
   const mutationObserver = new MutationObserver(() => {
+    if (document.location.href !== lastHref) {
+      lastHref = document.location.href;
+      updatePageType(data).catch();
+    }
+
     if (!document.body.contains(contentRoot)) {
       console.debug("[PTD] Content root removed from body, remounting app...");
       app.unmount();

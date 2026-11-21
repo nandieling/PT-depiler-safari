@@ -4,7 +4,14 @@
  */
 import type { AxiosRequestConfig, AxiosResponse } from "axios";
 
-import Unit3D, { CategoryFree, pick, pickAttr, SchemaMetadata } from "../schemas/Unit3D.ts";
+import Unit3D, {
+  CategoryFree,
+  freeleechFactorMap,
+  type IUnit3DRawTorrent,
+  pick,
+  pickAttr,
+  SchemaMetadata,
+} from "../schemas/Unit3D.ts";
 import type { ISearchInput, ISiteMetadata, ITorrent, ITorrentTag } from "../types";
 import { buildCategoryOptionsFromDict } from "../utils.ts";
 
@@ -40,19 +47,10 @@ const categoryMap: Record<number, string> = {
   4: "SoundTrack",
 };
 
-interface IDreadVaultRawTorrent {
-  attributes?: {
-    freeleech?: string;
-    double_upload?: boolean;
-    featured?: boolean;
-    internal?: boolean;
-  };
-  freeleech?: string;
-  double_upload?: boolean;
-  featured?: boolean;
-  internal?: boolean;
-  [key: string]: unknown;
-}
+/**
+ * UNIT3D 的 `freeleech` 字段是「免费比例」（0~100，100 = 全免），下载计费比例 = 1 - free%。
+ * 换算表与种子行的公共字段定义见 `schemas/Unit3D.ts`（freeleechFactorMap / IUnit3DRawTorrent）。
+ */
 
 export const siteMetadata: ISiteMetadata = {
   ...SchemaMetadata,
@@ -67,8 +65,6 @@ export const siteMetadata: ISiteMetadata = {
   schema: "Unit3D",
 
   urls: ["https://dreadvault.org/"],
-
-  favicon: "./_default_unit3d.ico",
 
   userInputSettingMeta: [
     {
@@ -267,7 +263,7 @@ export default class DreadVault extends Unit3D {
     row: Element | Document | object,
     searchConfig: ISearchInput,
   ): Partial<ITorrent> {
-    const raw = row as IDreadVaultRawTorrent;
+    const raw = row as IUnit3DRawTorrent;
     const tags: ITorrentTag[] = [];
 
     const featured = pick(raw, "featured", false);
@@ -277,23 +273,17 @@ export default class DreadVault extends Unit3D {
 
     if (featured) {
       // featured（精选）在 Unit3D 中等价于 100% 免费 + 双倍上传
-      tags.push({ name: "Free", color: "blue" });
-      tags.push({ name: "2xUp", color: "lime" });
+      torrent.downloadVolumeFactor = 0;
+      torrent.uploadVolumeFactor = 2;
       tags.push({ name: "精选", color: "deep-purple" });
     } else {
-      if (freeleech === "100%") {
-        tags.push({ name: "Free", color: "blue" });
-      } else if (freeleech === "75%") {
-        tags.push({ name: "75%", color: "lime-darken-3" });
-      } else if (freeleech === "50%") {
-        tags.push({ name: "50%", color: "orange" });
-      } else if (freeleech === "25%") {
-        tags.push({ name: "25%", color: "purple" });
+      const downloadVolumeFactor = freeleechFactorMap[freeleech];
+      if (downloadVolumeFactor !== undefined) {
+        torrent.downloadVolumeFactor = downloadVolumeFactor;
       }
 
-      if (doubleUpload) {
-        tags.push({ name: "2xUp", color: "lime" });
-      }
+      // 与 Jackett 一致：double_upload 是布尔值，false 表示已知的「正常」（1），不是未知
+      torrent.uploadVolumeFactor = doubleUpload ? 2 : 1;
     }
 
     if (internal) {

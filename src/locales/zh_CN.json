@@ -393,9 +393,11 @@
         "alive": "相对时间",
         "aliveWeek": "相对周数"
       },
-      "limitLevelNameTdWidth": "限制等级栏宽度",
       "multiOpen": "批量打开",
+      "noSiteSelectedCancelOpen": "当前没有可打开的站点",
       "noSiteSelectedCancelRefresh": "未选择任何站点，取消刷新",
+      "noSiteSelectedOpenAll": "未选择任何站点，默认打开全部站点",
+      "noSiteSelectedOpenFilteredPage": "未选择任何站点，默认打开当前筛选结果中本页的 {count} 个站点",
       "noSiteSelectedRefreshAll": "未选择任何站点，默认刷新全部站点",
       "normalizeLevelName": "使用站点定义的等级名称",
       "onlyShowUserLevelRequirement": "只显示等级要求中的升级队列",
@@ -494,7 +496,7 @@
         "siteNotEnabled": "该站点未启用",
         "userCancel": "用户取消该搜索请求"
       },
-      "successMsg": "共找到 {0} 条结果，用时 {0}s",
+      "successMsg": "共找到 {0} 条结果，用时 {1}s",
       "title": "方案 [{0}] 搜索状态"
     },
     "index": {
@@ -519,12 +521,14 @@
         "searching": "搜索中…",
         "snapshot": "搜索快照"
       },
+      "billableSize": "计费体积",
+      "billableSizeHint": "已选种子的实际计费体积（按下载量系数折算；系数未知时按 1 计）",
       "filterLabel": "过滤搜索结果",
       "highlightSameSizeTorrent": "按大小排序时标记相同大小的种子",
-      "limitTorrentTitleTdWidth": "限制种子标题宽度",
       "selectedTorrents": "已选择 {0} 个种子",
       "showSiteName": "显示站点名称",
       "showSocialInformation": "显示媒体评价信息",
+      "showTorrentCover": "显示种子封面",
       "showTorrentSubtitle": "显示种子副标题",
       "showTorrentTag": "显示种子标签",
       "socialInformationSearchOnNewTab": "媒体评价信息搜索在新标签页中打开",
@@ -532,11 +536,24 @@
         "category": "分类",
         "comments": "评论",
         "completed": "完成",
+        "downloadVolumeFactor": "优惠",
         "leechers": "下载",
         "seeders": "上传",
         "size": "大小",
         "time": "发布于(≈)",
         "title": "标题"
+      },
+      "tagTooltip": {
+        "downloadPercent": "下载量按 {0}% 计算",
+        "freeDownload": "下载不计流量",
+        "noUpload": "上传不计流量",
+        "uploadTimes": "上传量 ×{0}"
+      },
+      "titleDisplayMode": "种子标题显示方式",
+      "titleDisplayModeOptions": {
+        "end": "末端省略",
+        "middle": "中间省略",
+        "scroll": "滚动"
       },
       "uploadAtFormatAsAlive": "上传时间显示为相对时间"
     },
@@ -718,6 +735,7 @@
       "autoDetectOfficialGroupFromTitle": "自动识别种子标题中的官方组信息，并形成标签",
       "autoLoadInitialMediaWall": "自动加载首屏媒体墙",
       "autoLoadMoreMediaOnScroll": "当滚动到页面底部时，自动加载新的媒体墙",
+      "displayLabel": "标题显示",
       "filterLabel": "结果筛选",
       "forceImdbIdMatchFilter": "使用 IMDb 搜索时，在搜索结果中滤去站点返回的IMDb号不匹配的结果",
       "hiddenTagNames": "隐藏标签（每行一个）",
@@ -728,6 +746,14 @@
       "mediaSearchLimit": "单次搜索结果数量",
       "mediaSearchLimitMessage": "请不要一次性加载过多的搜索结果，未作 virtual‑scroll 优化，可能会导致浏览器卡死，同时也会影响媒体服务器的性能",
       "mediaServerSearchConfig": "媒体服务器搜索配置",
+      "promotionDisplay": "优惠信息展示",
+      "promotionDisplayMessage": "「不显示」完全隐藏优惠信息；「仅标签」与原行为一致；「仅数值」隐藏优惠标签，改用「优惠」列与高级筛选滑块；「标签 + 数值」两者都显示",
+      "promotionDisplayOptions": {
+        "both": "标签 + 数值",
+        "factor": "仅数值",
+        "none": "不显示",
+        "tags": "仅标签"
+      },
       "quickSiteFilter": "直接显示站点筛选栏",
       "saveLastSearchFilter": "保存上一次使用的搜索筛选词",
       "searchPlanLabel": "搜索方案",
@@ -735,6 +761,13 @@
       "siteQueueConcurrency": "请求队列长度",
       "siteSearchConfig": "站点搜索配置",
       "tagLabel": "标签筛选",
+      "titleDisplayMode": "种子标题显示方式",
+      "titleDisplayModeMessage": "「末端省略」保持单行，超出部分在末尾以 … 收尾；「中间省略」保留标题开头与结尾（可直接看到小组等后缀），中间以 … 省略；「滚动」在标题放不下时默认隐藏超出部分，鼠标悬停时按标题长度往返滚动（2–5 秒完成一次）。",
+      "titleDisplayModeOptions": {
+        "end": "末端省略",
+        "middle": "中间省略",
+        "scroll": "滚动"
+      },
       "treatTTQueryAsImdbSearch": "是否将 tt\\d\\{7,8\\} 的搜索词直接视为 IMDb 搜索"
     },
     "tab": {
@@ -789,6 +822,8 @@
       "tableActionColumnPosition": "操作列位置",
       "tableActionColumnPositionEnd": "行尾（默认）",
       "tableActionColumnPositionStart": "行首",
+      "tableColumnFit": "表格列宽自动适应内容",
+      "tableColumnFitNote": "按表头与当前显示的各行内容分配列宽，铺满表格宽度：放得下时按比例放大各列，放不下时只压缩最宽的几列（通常是标题），操作列保持完整。翻页、排序、筛选或显示的列变化时自动重新计算。",
       "tableMultiSortNote": "多列排序使用方法：点击任意表头字段开始排序，字段上会显示数字“1”。再点击其他字段，依次显示“2”“3”，表示排序优先级。再次点击相同字段可切换升序、降序或取消排序。排序顺序由这些数字决定，数字越小优先级越高。",
       "useLargeIcon": "使用大图标按键"
     },
@@ -994,6 +1029,9 @@
       "addCount": "已添加 @:SetSearchSolution.solution {0} 个",
       "cantAddByDuplicateNote": "已存在相同的 @:SetSearchSolution.solution ，无法重复添加。",
       "filterPlaceholder": "通过站点名称或 url 进行搜索",
+      "noMatchInFilteredSolutions": "当前筛选条件下没有匹配的已添加方案",
+      "siteAddedCount": "当前方案中该站点已添加 {0} 个搜索方案",
+      "sortByAddedCount": "按已添加次数排序（点击循环：升序 → 降序 → 默认）",
       "title": "自定义 @:SetSearchSolution.solution"
     },
     "newSolutionNamePrompt": "请输入新搜索方案名称",
@@ -1209,6 +1247,7 @@
   },
   "common": {
     "AdvanceFilterGenerateDialog": {
+      "collapse": "收起",
       "date": "日期",
       "dateUnit": {
         "custom": "自定义",
@@ -1221,8 +1260,11 @@
       "exclude": "排除项",
       "generate": "生成",
       "keywords": "关键词",
+      "promo": "优惠（下载计费比例）",
+      "promoUpload": "上传计费比例",
       "required": "必要项",
       "reset": "重置搜索词",
+      "showAll": "显示全部（{0}）",
       "site": "@:common.site",
       "title": "生成高级过滤词"
     },

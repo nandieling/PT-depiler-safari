@@ -392,6 +392,7 @@ export default class GazelleJSONAPI extends GazelleBase {
       completed: torrent.snatches,
       category: group.releaseType || "",
       tags,
+      cover: group.cover || undefined,
     } as ITorrent;
   }
 
@@ -508,11 +509,13 @@ export default class GazelleJSONAPI extends GazelleBase {
   }
 
   protected cleanupUserInfo(flushUserInfo: IUserInfo): IUserInfo {
-    if (!flushUserInfo.bonus) {
-      flushUserInfo.bonus = "N/A";
+    // 站点没有积分系统时 API 返回 null（getFieldData 会转为空串），删除字段让前端统一显示为 "-"；
+    // 数值 0 是有效积分，需要保留
+    if (!flushUserInfo.bonus && flushUserInfo.bonus !== 0) {
+      delete flushUserInfo.bonus;
     }
-    if (!flushUserInfo.bonusPerHour) {
-      flushUserInfo.bonusPerHour = "N/A";
+    if (!flushUserInfo.bonusPerHour && flushUserInfo.bonusPerHour !== 0) {
+      delete flushUserInfo.bonusPerHour;
     }
     if (!flushUserInfo.perfectFlacs) {
       delete flushUserInfo["perfectFlacs"];

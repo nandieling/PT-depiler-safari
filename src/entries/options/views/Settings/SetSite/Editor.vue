@@ -1,19 +1,23 @@
 <script setup lang="ts">
-import { watch, ref, onMounted, inject, computed } from "vue";
+import { watch, ref, onMounted, computed } from "vue";
 import { useI18n } from "vue-i18n";
 import { set } from "es-toolkit/compat";
-import type { timezoneOffset, ISiteUserConfig, TSiteID, ISiteMetadata, TSiteUrl } from "@ptd/site";
+import type { timezoneOffset, TSiteID, ISiteMetadata, TSiteUrl } from "@ptd/site";
 
 import { useMetadataStore } from "@/options/stores/metadata.ts";
+<<<<<<< ours
 import { formatDate, formValidateRules } from "@/options/utils.ts";
 import { cloneDeep, toMerged } from "es-toolkit";
+=======
+import { urlPattern } from "@/options/plugins/vuetify.ts";
+import { formatDate } from "@/options/utils.ts";
+import { toMerged } from "es-toolkit";
+>>>>>>> theirs
+
+import { useStoredSiteUserConfig } from "./injectionKeys.ts";
 
 const { t } = useI18n();
 const metadataStore = useMetadataStore();
-
-// NOTE: 不要在模板的事件回调中直接访问导入对象的成员：vue-tsc 3.3.12 起会为这类窄化访问生成 `.value`，
-//       而闭包内无法通过类型检查（TS2339），故提前解构出来（见 #1601）
-const { require: requireRule, url: urlRule } = formValidateRules;
 
 const siteId = defineModel<TSiteID>({ default: "" });
 const emit = defineEmits<{
@@ -21,7 +25,7 @@ const emit = defineEmits<{
 }>();
 
 const siteMetaData = ref<ISiteMetadata>({} as unknown as ISiteMetadata);
-const siteUserConfig = inject<ISiteUserConfig>("storedSiteUserConfig", {});
+const siteUserConfig = useStoredSiteUserConfig();
 const siteName = computed({
   get: () => siteUserConfig.value.merge?.name ?? siteMetaData.value.name,
   set: (value) => set(siteUserConfig.value, "merge.name", value),
@@ -47,8 +51,9 @@ async function initSiteData(siteId: TSiteID, flush = false) {
   );
 
   // fix: customSiteUrl not show in Editor (#726)
-  if (!siteMetaData.value.urls.includes(siteUserConfig.value.url)) {
-    customSiteUrl.value = siteUserConfig.value.url;
+  const siteUserConfigUrl = siteUserConfig.value.url;
+  if (siteUserConfigUrl && !siteMetaData.value.urls.includes(siteUserConfigUrl)) {
+    customSiteUrl.value = siteUserConfigUrl;
   }
 
   updateFormValid(siteMetaData.value.isDead ? true : isFormValid.value);
@@ -113,7 +118,7 @@ const timeZone: Array<{ value: timezoneOffset; title: string }> = [
               v-model="siteName"
               :items="[siteMetaData.name, ...(siteMetaData.aka ?? [])]"
               :label="t('SetSite.common.name')"
-              :rules="[requireRule()]"
+              :rules="['required']"
               hide-details
             ></v-combobox>
           </v-col>
@@ -125,7 +130,7 @@ const timeZone: Array<{ value: timezoneOffset; title: string }> = [
               v-model="siteUserConfig.sortIndex"
               :label="t('common.sortIndex')"
               :placeholder="t('SetSite.editor.sortIndexTip')"
-              :rules="[requireRule()]"
+              :rules="['required']"
               hide-details
               type="number"
             />
@@ -156,7 +161,7 @@ const timeZone: Array<{ value: timezoneOffset; title: string }> = [
             :label="t('SetSite.common.url')"
             class="edit-select-url"
             hide-details
-            :rules="[requireRule()]"
+            :rules="['required']"
           >
             <v-radio v-for="url in siteMetaData.urls" :key="url" :value="url" @click="updateFormValid(true)">
               <template #label style="width: 100%">
@@ -177,7 +182,7 @@ const timeZone: Array<{ value: timezoneOffset; title: string }> = [
                 <v-text-field
                   v-model="customSiteUrl"
                   :placeholder="t('SetSite.editor.customUrlPlaceholder')"
-                  :rules="[(val) => (val ? urlRule()(val) : true)]"
+                  :rules="[['pattern', urlPattern]]"
                   @update:modelValue="(val) => (siteUserConfig.url = val as unknown as TSiteUrl)"
                 ></v-text-field>
               </template>
@@ -196,7 +201,7 @@ const timeZone: Array<{ value: timezoneOffset; title: string }> = [
             v-model="siteUserConfig.inputSetting![userInputMeta.name]"
             :hint="userInputMeta.hint"
             :label="userInputMeta.label"
-            :rules="[(val) => (!siteMetaData.isDead && userInputMeta.required ? requireRule()(val) : true)]"
+            :rules="!siteMetaData.isDead && userInputMeta.required ? ['required'] : []"
             validate-on="input"
           >
           </v-text-field>
