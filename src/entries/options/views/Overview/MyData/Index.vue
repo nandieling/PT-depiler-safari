@@ -6,12 +6,13 @@ import { useRouter } from "vue-router";
 import { isUndefined } from "es-toolkit/compat";
 import { useDisplay, type DataTableHeader } from "vuetify";
 import { EResultParseStatus, type ISiteUserConfig, type IUserInfo, type TSiteID } from "@ptd/site";
+import { siteMetadataIndex } from "@ptd/site/metadataIndex";
 
 import { useConfigStore } from "@/options/stores/config.ts";
 import { useRuntimeStore } from "@/options/stores/runtime.ts";
 import { useMetadataStore } from "@/options/stores/metadata.ts";
 import { useTableCustomFilter } from "@/options/directives/useAdvanceFilter.ts";
-import { useTableActionColumn } from "@/options/directives/useTableActionColumn.ts";
+import { useTableColumnFit } from "@/options/directives/useTableColumnFit.ts";
 import { formatDate, formatSize, formatTimeAgo } from "@/options/utils.ts";
 
 import SiteName from "@/options/components/SiteName.vue";
@@ -33,11 +34,9 @@ const runtimeStore = useRuntimeStore();
 const metadataStore = useMetadataStore();
 const display = useDisplay();
 
-// 等级列是否限制宽度：用户开启「限制等级栏宽度」，或处于小屏时生效（与搜索结果页的标题列行为一致）。
+// 等级列是否限制宽度：小屏时生效（与搜索结果页的标题列行为一致）。
 // 表头 maxWidth 与单元格截断共用此条件，避免出现「限宽不裁剪」或「裁剪不限宽」的错位。
-const limitLevelNameTdWidth = computed(
-  () => configStore.myDataTableControl.limitLevelNameTdWidth || display.smAndDown.value,
-);
+const limitLevelNameTdWidth = computed(() => display.smAndDown.value);
 
 const currentDate = new Date();
 
@@ -79,12 +78,10 @@ const fullTableHeader = computed(
 );
 
 const tableHeader = computed(() => {
-  return useTableActionColumn(
-    fullTableHeader.value.filter(
-      (item: TExtendDataTableHeader) =>
-        item?.props?.disabled || configStore.tableBehavior.MyData.columns!.includes(item.key!),
-    ) as DataTableHeader[],
-  );
+  return fullTableHeader.value.filter(
+    (item: TExtendDataTableHeader) =>
+      item?.props?.disabled || configStore.tableBehavior.MyData.columns!.includes(item.key!),
+  ) as DataTableHeader[];
 });
 
 const tableNonBooleanControlKey = [
@@ -125,6 +122,16 @@ const {
 });
 
 const tableSelected = ref<TSiteID[]>([]); // 选中的站点行
+
+// 当前分页展示的站点，由 v-data-table 的 `update:currentItems` 提供（已应用筛选与排序）
+// NOTE: 这是 v-data-table 唯一能拿到的「当前结果」钩子，它只包含当前页，参见 #1663
+const tableCurrentPageSites = ref<TSiteID[]>([]);
+function updateTableCurrentPageSites(items: any[]) {
+  tableCurrentPageSites.value = items.map((item) => item.value as TSiteID);
+}
+
+// 表格是否处于筛选状态：筛选词为空时 v-data-table 不会进行任何过滤（此时展示的即是全部站点）
+const tableFiltered = computed(() => tableFilterRef.value.trim().length > 0);
 
 // 最近一次更新失败的站点状态，用于快速筛选
 // NOTE: 不要在模板的事件回调中直接访问导入枚举的成员：vue-tsc 3.3.12 起会为这类窄化访问生成 `.value`，
@@ -168,6 +175,7 @@ function viewHistoryData(siteId: TSiteID) {
   historyDataViewDialogSiteId.value = siteId;
 }
 
+<<<<<<< ours
 async function multiOpen() {
   const selectedSites = [...tableSelected.value];
   const siteUrlResults = await Promise.allSettled(
@@ -185,6 +193,36 @@ async function multiOpen() {
       openedSiteCount += 1;
     } catch (error) {
       console.warn(`[PTD] Failed to open site tab: ${url}`, error);
+=======
+function multiOpen() {
+  let openSiteIds: TSiteID[] = tableSelected.value;
+
+  // #1663：未勾选站点时，按「是否处于筛选状态」决定打开范围，避免筛选后仍然打开全部站点
+  // NOTE: v-data-table 没有提供「筛选后的全部结果」的钩子（vuetifyjs/vuetify#19382），
+  //       只能取到当前分页展示的站点，故筛选状态下仅打开当前页
+  if (openSiteIds.length === 0) {
+    if (tableFiltered.value) {
+      openSiteIds = tableCurrentPageSites.value;
+      if (openSiteIds.length === 0) {
+        runtimeStore.showSnackbar(t("MyData.index.noSiteSelectedCancelOpen"), { color: "warning" });
+        return;
+      }
+      runtimeStore.showSnackbar(t("MyData.index.noSiteSelectedOpenFilteredPage", { count: openSiteIds.length }), {
+        color: "info",
+      });
+    } else {
+      openSiteIds = tableData.value.map((item) => item.site);
+      runtimeStore.showSnackbar(t("MyData.index.noSiteSelectedOpenAll"), { color: "info" });
+    }
+  }
+
+  // NOTE: 这里必须同步取 URL，若在循环内 `await`，则第一个 `window.open` 之后用户手势即失效，
+  //       后续标签页会被浏览器拦截（表格数据均已挂载 `siteUserConfig`，无需再走异步查询）
+  for (const siteId of openSiteIds) {
+    const siteUrl = metadataStore.sites[siteId]?.url || siteMetadataIndex[siteId]?.urls?.[0];
+    if (siteUrl) {
+      window.open(siteUrl, "_blank", "noopener noreferrer");
+>>>>>>> theirs
     }
   }
 }
@@ -229,6 +267,8 @@ function viewStatistic() {
 }
 
 const showExportDialog = ref(false);
+
+const { tableRef: fitTableRef, fittedHeaders, tableClass: fitTableClass } = useTableColumnFit(tableHeader);
 </script>
 
 <template>
@@ -254,7 +294,7 @@ const showExportDialog = ref(false);
         />
 
         <NavButton
-          :disabled="tableSelected.length === 0"
+          :disabled="tableData.length === 0"
           color="indigo"
           icon="mdi-open-in-new"
           :text="t('MyData.index.multiOpen')"
@@ -442,10 +482,12 @@ const showExportDialog = ref(false);
       </v-row>
     </v-card-title>
     <v-data-table
+      ref="fitTableRef"
+      :class="fitTableClass"
       v-model="tableSelected"
       :custom-filter="tableFilterFn"
       :filter-keys="['site'] /* 对每个item值只检索一次 */"
-      :headers="tableHeader"
+      :headers="fittedHeaders"
       :items="tableData"
       :items-per-page="configStore.tableBehavior.MyData.itemsPerPage"
       :multi-sort="configStore.enableTableMultiSort"
@@ -456,6 +498,7 @@ const showExportDialog = ref(false);
       item-selectable="selectable"
       item-value="site"
       show-select
+      @update:current-items="updateTableCurrentPageSites"
       @update:itemsPerPage="(v) => configStore.updateTableBehavior('MyData', 'itemsPerPage', v)"
       @update:sortBy="(v) => configStore.updateTableBehavior('MyData', 'sortBy', v)"
     >

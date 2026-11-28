@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import { useI18n } from "vue-i18n";
+import { supportSocialSite } from "@ptd/social";
 
 import { supportTheme } from "@/shared/types.ts";
 import { definedLangMetaData } from "@/options/plugins/i18n.ts";
@@ -17,6 +18,10 @@ const tableActionColumnPositionItems = computed(() => [
   { title: t("SetBase.ui.tableActionColumnPositionStart"), value: "start" as const },
   { title: t("SetBase.ui.tableActionColumnPositionEnd"), value: "end" as const },
 ]);
+
+const socialSiteItems = computed(() =>
+  supportSocialSite.map((site) => ({ title: t(`SetBase.ui.socialSiteName.${site}`), value: site })),
+);
 
 function initContentScriptExceptionSites() {
   Object.keys(metadataStore.sites).forEach((site) => {
@@ -138,6 +143,22 @@ defineExpose({
         </template>
       </v-switch>
 
+      <v-switch
+        v-model="configStore.tableColumnFit"
+        color="success"
+        hide-details
+        :label="t('SetBase.ui.tableColumnFit')"
+      >
+        <template #append>
+          <v-tooltip max-width="400" location="bottom">
+            <template v-slot:activator="{ props }">
+              <v-icon color="info" icon="mdi-help-circle" v-bind="props" />
+            </template>
+            {{ t("SetBase.ui.tableColumnFitNote") }}
+          </v-tooltip>
+        </template>
+      </v-switch>
+
       <v-divider />
     </v-col>
   </v-row>
@@ -175,6 +196,18 @@ defineExpose({
               color="success"
               hide-details
               :label="t('SetBase.ui.enableOnSocialSite')"
+            />
+
+            <v-select
+              v-if="configStore.contentScript.enabledAtSocialSite"
+              v-model="configStore.contentScript.disabledSocialSites"
+              chips
+              closable-chips
+              density="compact"
+              hide-details
+              :items="socialSiteItems"
+              :label="t('SetBase.ui.disabledSocialSites')"
+              multiple
             />
 
             <v-divider />

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from "vue";
+import { computed, onMounted, onUnmounted, ref, shallowRef } from "vue";
 import { useI18n } from "vue-i18n";
 import { useRoute, useRouter } from "vue-router";
 import type { DataTableHeader } from "vuetify";
@@ -17,7 +17,7 @@ import { formatSize, formatDate } from "@/options/utils.ts";
 import { useMetadataStore } from "@/options/stores/metadata.ts";
 import { useRuntimeStore } from "@/options/stores/runtime.ts";
 import { useConfigStore } from "@/options/stores/config.ts";
-import { useTableActionColumn } from "@/options/directives/useTableActionColumn.ts";
+import { useTableColumnFit } from "@/options/directives/useTableColumnFit.ts";
 
 import DeleteDialog from "./DeleteDialog.vue";
 import PushToDownloaderDialog from "./PushToDownloaderDialog.vue";
@@ -56,7 +56,8 @@ const {
 // ── state ──────────────────────────────────────────────────────────────────
 const loading = ref(false);
 
-const tableSelected = ref<CTorrent[]>([]);
+// 选择集只整体赋值 / 清空（v-data-table 的 v-model 每次 emit 新数组），元素本身只读，无需深层代理
+const tableSelected = shallowRef<CTorrent[]>([]);
 const searchText = ref("");
 
 // delete dialog
@@ -161,12 +162,11 @@ const fullTableHeader = computed(
     ] as (DataTableHeader & { props?: any })[],
 );
 
-const tableHeader = computed(() =>
-  useTableActionColumn(
+const tableHeader = computed(
+  () =>
     fullTableHeader.value.filter(
       (item) => item?.props?.disabled || (configStore.tableBehavior["MyClient"] as any)?.columns?.includes(item.key),
     ) as DataTableHeader[],
-  ),
 );
 
 // ── data loading ──────────────────────────────────────────────────────────
@@ -300,6 +300,8 @@ function clearDownloaderFilter() {
 function torrentKey(torrent: CTorrent) {
   return `${torrent.clientId}:${String(torrent.id)}`;
 }
+
+const { tableRef: fitTableRef, fittedHeaders, tableClass: fitTableClass } = useTableColumnFit(tableHeader);
 </script>
 
 <template>
@@ -490,8 +492,10 @@ function torrentKey(torrent: CTorrent) {
 
     <v-card-text>
       <v-data-table
+        ref="fitTableRef"
+        :class="fitTableClass"
         v-model="tableSelected"
-        :headers="tableHeader"
+        :headers="fittedHeaders"
         :items="filteredTorrents"
         :items-per-page="configStore.tableBehavior['MyClient']?.itemsPerPage ?? 25"
         :loading="loading"

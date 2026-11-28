@@ -1,7 +1,7 @@
 // noinspection ES6PreferShortImport
 
 import type { AxiosRequestConfig } from "axios";
-import { TSiteID, TSiteHost, TSiteUrl, TSiteFullUrl, TPatterns } from "./base";
+import { TSiteID, TSiteHost, TSiteUrl, TSiteFullUrl, TPatterns } from "./base.ts";
 import type { ITorrent } from "./torrent";
 import type { ILevelRequirement, IUserInfo } from "./userinfo";
 import type { IElementQuery, ISearchCategories, ISearchConfig, ISearchEntryRequestConfig } from "./search";
@@ -12,6 +12,7 @@ export type SiteSchema =
   | "AbstractBittorrentSite"
   | "AbstractPrivateSite"
   | "AvistazNetwork"
+  | "FluxTorrent"
   | "Gazelle"
   | "GazelleJSONAPI"
   | "Luminance"
@@ -46,7 +47,7 @@ export interface ISiteMetadata {
   /**
    * 对应解析的更新版本，建议每次对ISiteMetadata的修改都对此版本号 +1
    * 注意，我们在此处约定如下：
-   *  - AbstractBittorrentSite，AbstractPrivateSite，NexusPHP，Unit3D，Gazelle，GazelleJSONAPI，AvistaZ 这些架构不需要更新版本号
+   *  - AbstractBittorrentSite，AbstractPrivateSite，NexusPHP，Unit3D，Gazelle，GazelleJSONAPI，AvistaZ，FluxTorrent 这些架构不需要更新版本号
    *  - AbstractBittorrentSite，AbstractPrivateSite 模板定义为 -1
    *  - NexusPHP 等其他架构定义为 0
    *  - 其他站点都应该定义为任意大于0的数字，建议定义为 1，你也可以定义为编辑的日期如 YYYYMMDD ，但在单个站点定义中应该保持一致

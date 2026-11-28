@@ -3,9 +3,14 @@ import { defineJobScheduler } from "@webext-core/job-scheduler";
 import { EResultParseStatus, type TSiteID } from "@ptd/site/types/base.ts";
 
 import { extStorage } from "@/storage.ts";
+<<<<<<< ours
 import { onMessage, sendMessage } from "@/messages.ts";
 import { IDownloadTorrentOption } from "@/shared/types.ts";
 import { scheduleAutoBackup } from "./autoBackup.ts";
+=======
+import { isUserInfoQueueCancelledError, onMessage, sendMessage } from "@/messages.ts";
+import { IDownloadTorrentOption, IMetadataPiniaStorageSchema } from "@/shared/types.ts";
+>>>>>>> theirs
 
 import { setupOffscreenDocument } from "./offscreen.ts";
 import { sleep } from "~/helper.ts";
@@ -92,6 +97,11 @@ function autoFlushUserInfo(retryIndex: number = 0) {
             processedSiteCount += 1;
           }
         } catch (e) {
+          // 队列被用户主动取消（p-queue 10 的 clear() 会以 AbortError 结束被移除的排队任务）：
+          // 不再继续排队本轮剩余站点，也不算该站点刷新失败
+          if (isUserInfoQueueCancelledError(e)) {
+            break;
+          }
           failFlushSites.push(siteId);
         }
       }

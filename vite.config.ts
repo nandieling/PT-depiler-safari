@@ -14,10 +14,10 @@ import { vitePluginGenerateWebextLocales } from "./vite/plugin/generateWebextLoc
 import { vitePluginGenerateSiteIndex } from "./vite/plugin/generateSiteIndex.ts";
 import { getGitInfo } from "./vite/utils/gitInfo.ts";
 
-import pkg from "./package.json";
+import pkg from "./package.json" with { type: "json" };
 
 function base_path(_path = "") {
-  return path.resolve(__dirname, _path);
+  return path.resolve(import.meta.dirname, _path);
 }
 
 const target = process.env.TARGET || "chrome";
@@ -42,6 +42,7 @@ const gitInfo = getGitInfo();
 const base_version: string = pkg.version;
 const commit_version = `${base_version}+${gitInfo.short}`;
 
+<<<<<<< ours
 /** 最近一次同步到的上游提交，记录在 .upstream-synced；读不到时留空 */
 function syncedUpstreamCommit(): string {
   try {
@@ -52,9 +53,38 @@ function syncedUpstreamCommit(): string {
 }
 
 const upstream_commit = syncedUpstreamCommit();
+=======
+// dev 模式下 chokidar 默认递归 watch 整个仓库根目录，而本机的临时目录（构建 TEMP、
+// 浏览器 profile、调研克隆、pnpm store 等）动辄数万文件，既拖慢启动也频繁触发无意义的
+// 全量重载。这里显式排除非源码目录；Vite 的默认值（.git / node_modules / test-results）
+// 会被覆盖，故一并列出。
+const watchIgnored = [
+  "**/.git/**",
+  "**/node_modules/**",
+  // 本机的临时 / 调研目录（.gitignore 中已忽略，见 `.tmp-*/`、`.research-*`、`.pnpm-store`）
+  "**/.tmp-*/**",
+  "**/.research-*/**",
+  "**/.pnpm-store/**",
+  // 编辑器、CI 与 agent 元数据
+  "**/.idea/**",
+  "**/.vscode/**",
+  "**/.github/**",
+  "**/.husky/**",
+  "**/.agents/**",
+  // 构建产物与本地笔记
+  "**/dist-*/**",
+  "**/docs/**",
+  "**/*.tsbuildinfo",
+];
+>>>>>>> theirs
 
 // https://vitejs.dev/config/
 export default defineConfig({
+  server: {
+    watch: {
+      ignored: watchIgnored,
+    },
+  },
   build: {
     target: "es2023",
     outDir: `dist-${target}`,
@@ -186,6 +216,12 @@ export default defineConfig({
           },
         },
         "{{firefox}}.content_security_policy": {
+          // 覆盖默认 CSP 只为去掉 MV3 自带的 `upgrade-insecure-requests`
+          // ——它会把手里的 http 请求（下载器、媒体服务器）强行升到 https（#27）。
+          //
+          // ⚠️ 不要在这里声明 `img-src`：扩展页面的图片基本都是远端地址（媒体服务器海报、
+          // 豆瓣推荐图…），写死 `img-src 'self'` 就会全部拦掉（428a53cd 引入的回归）。
+          // http 图片能否显示取决于 Firefox 的混合内容升级规则（#1657），CSP 这一层管不了。
           extension_pages: "script-src 'self';",
         },
         "{{safari}}.content_security_policy": {
@@ -244,14 +280,14 @@ export default defineConfig({
               // 产物 assets/cs-app.js 由轻量引导在匹配站点时通过 chrome.runtime.getURL 动态加载，
               // 并直接复用 options 构建已拆分的 vendor chunk（见 issue #1467）。
               config.build ??= {};
-              config.build.rollupOptions ??= {};
-              config.build.rollupOptions.input ??= {};
-              (config.build.rollupOptions.input as Record<string, string>)["cs-app"] = base_path(
+              config.build.rolldownOptions ??= {};
+              config.build.rolldownOptions.input ??= {};
+              (config.build.rolldownOptions.input as Record<string, string>)["cs-app"] = base_path(
                 "src/entries/content-script/app/init.ts",
               );
               // 该入口仅由 content script 引导在运行时动态 import（构建期无静态消费者），
               // 必须保留入口导出签名，否则 mountApp 会被 rollup 树摇成纯副作用壳
-              config.build.rollupOptions.preserveEntrySignatures = "strict";
+              config.build.rolldownOptions.preserveEntrySignatures = "strict";
               // 动态 import 不会自动加载按 chunk 拆分的 css 分片，cs-app 的组件树样式
               // （vuetify 组件、页面组件等分散在各 chunk 的 css）无法逐份在页面上下文
               // 引入，故合并为单文件，由 app/init.ts 按固定地址 link
@@ -270,8 +306,8 @@ export default defineConfig({
           {
             name: "sort-asserts",
             config(config) {
-              config.build!.rollupOptions!.output = {
-                ...config.build?.rollupOptions!.output,
+              config.build!.rolldownOptions!.output = {
+                ...config.build?.rolldownOptions!.output,
                 chunkFileNames: (chunkInfo) => {
                   // 特殊情况下 facadeModuleId 可能为 null，这时我们使用 moduleIds 的最后一个作为 chunkName
                   const chunkName = chunkInfo.facadeModuleId || chunkInfo.moduleIds.slice(-1)[0];

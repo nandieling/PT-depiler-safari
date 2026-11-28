@@ -4,7 +4,7 @@
  * @PDSDefinitions https://github.com/mantou568/pre-dessert-sites/blob/main/site_config/sites/karagarga.json
  */
 import PrivateSite from "../schemas/AbstractPrivateSite.ts";
-import type { ISearchInput, ISiteMetadata, ITorrent, ITorrentTag, IUserInfo } from "../types";
+import type { ISearchInput, ISiteMetadata, ITorrent, ITorrentTag } from "../types";
 import { parseSizeString, parseValidTimeString } from "../utils";
 
 const categoryOptions = [
@@ -116,9 +116,16 @@ export const siteMetadata: ISiteMetadata = {
 
   urls: ["https://karagarga.in/"],
 
+  // 2026-11-09 Jackett https://github.com/Jackett/Jackett/commit/984141bfcc1313a3d73c0797aafa57365da99a50
+  // （resolves https://github.com/Jackett/Jackett/issues/17259）显示站点登录表单已改版：
+  // 由 `form[action="takelogin.php"]` + 图形验证码，换成 `<form name="login" method="post">`
+  // 且字段为 `login[username]` / `login[password]` / `login[submit]`。
+  // 2026-11-11 实测 https://karagarga.in/login.php（200，标题「KG - Login」）：页面只有
+  // `<form name="login" method="post">`，已无 takelogin 字样——旧断言选择器永远不会命中，
+  // 未登录状态只能靠 URL 模式兜底，故一并更新。
   noLoginAssert: {
-    urlPatterns: [/login\.php|takelogin\.php/],
-    matchSelectors: ["form[action='takelogin.php']"],
+    urlPatterns: [/login\.php/],
+    matchSelectors: ["form[name='login']"],
   },
 
   category: [
@@ -241,8 +248,6 @@ export const siteMetadata: ISiteMetadata = {
             selector: "td[style*='background: #DF0101'] a[href*='messages.php']",
             filters: [{ name: "parseNumber" }],
           },
-          bonus: { text: "N/A" },
-          bonusPerHour: { text: "N/A" },
         },
       },
       {
@@ -294,16 +299,6 @@ export const siteMetadata: ISiteMetadata = {
 };
 
 export default class KaraGarga extends PrivateSite {
-  public override async getUserInfoResult(lastUserInfo: Partial<IUserInfo> = {}): Promise<IUserInfo> {
-    const userInfo = await super.getUserInfoResult(lastUserInfo);
-    const userInfoRecord = userInfo as Record<string, unknown>;
-
-    userInfoRecord.bonus = "N/A";
-    userInfoRecord.bonusPerHour = "N/A";
-
-    return userInfo;
-  }
-
   protected override parseTorrentRowForTags(
     torrent: Partial<ITorrent>,
     row: Element | Document | object,

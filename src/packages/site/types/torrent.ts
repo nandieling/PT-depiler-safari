@@ -22,6 +22,7 @@ export interface ITorrent {
   id: number | string; // 该种子id
   title: string; // 主标题
   subTitle?: string; // 次标题
+  cover?: string; // 封面图片链接（站点在搜索列表中提供的封面，部分站点可能回退为 IMDb/TMDB 海报）
 
   /**
    * 特别注意： link 和 url 两个的含义在 ptpp 和 ptd 中是完全相反的
@@ -32,6 +33,20 @@ export interface ITorrent {
    */
   url?: string;
   link?: string;
+
+  /**
+   * 种子的 infohash（BEP 3，BitTorrent v1）：
+   *  - 通常为 40 位 hex，旧的 32 位 base32 形态也允许；
+   *  - 只是种子内容的唯一标识，不承载 passkey 等站点私有信息，可放心用于拼公开 magnet
+   *    （见 utils/filter.ts 的 infoHashToMagnet）。
+   */
+  infoHash?: string;
+
+  /**
+   * 种子的 infohash（BEP 52，BitTorrent v2，SHA-256，64 位 hex）。
+   * 混合种子（hybrid）与上面的 infoHash 同时存在，magnet 中对应 `urn:btmh:1220<hash>` 形态。
+   */
+  infoHashV2?: string;
 
   time?: number; // 发布时间戳（毫秒级）
   size?: number; // 大小
@@ -44,6 +59,27 @@ export interface ITorrent {
 
   category?: string | number;
   tags?: ITorrentTag[];
+
+  /**
+   * 下载量系数（对应 torznab / Jackett 的 `downloadvolumefactor`）：
+   *  - `0`：免费下载（Free）
+   *  - `0 < d < 1`：按比例计算下载量（如 `0.5` 即 50%）
+   *  - `1`：正常计算下载量
+   *  - `undefined`：未知（**不要用 `1` 表示未知**）
+   *
+   * 与 `tags` 的关系：二者同时存在（`utils/promotion.ts` 单点派生），factor 优先；
+   * 只有一个时由另一个反推。`0` 是合法值，判断必须写 `!== undefined`。
+   */
+  downloadVolumeFactor?: number;
+
+  /**
+   * 上传量系数（对应 torznab / Jackett 的 `uploadvolumefactor`）：
+   *  - `0`：不计上传量
+   *  - `1`：正常计算上传量
+   *  - `> 1`：多倍上传（如 `2` 即 2x）
+   *  - `undefined`：未知
+   */
+  uploadVolumeFactor?: number;
 
   [key: `ext_${TAdvanceSearchKeyword}`]: string | number | null; // 外部资源id
 

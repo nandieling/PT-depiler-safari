@@ -15,8 +15,8 @@ import { buildCategoryOptionsFromList } from "../utils";
 /**
  * Fappaizuri —— 成人向私有 PT 站（HENTAI / JAV / Manga / H-games）
  *
- * 引擎：Jackett 定义末尾标注 `# evolution`（其收录请求 Jackett#14438 的 Tracker details 中
- * 亦写明 "Engine: evolution"），本仓库没有该引擎，故按 aidoruonline 的做法采用自定义
+ * 引擎：Jackett 定义末尾标注 `# evolution`（其收录请求 https://github.com/Jackett/Jackett/issues/14438
+ * 的 Tracker details 中亦写明 "Engine: evolution"），本仓库没有该引擎，故按 aidoruonline 的做法采用自定义
  * schema 名 + 本文件导出的 default class 承载解析逻辑。
  *
  * 站点特征（与 aidoruonline 高度同构，同属 evolution 系）：
@@ -207,7 +207,6 @@ export const siteMetadata: ISiteMetadata = {
       ratio: { selector: ["td.prof-lbl:contains('Ratio:') + td"], filters: [{ name: "parseNumber" }] },
       levelName: { selector: ["td.prof-lbl:contains('User Class:') + td"] },
       joinTime: { selector: ["td.prof-lbl:contains('Joined:') + td"], filters: [{ name: "parseTime" }] },
-      bonus: { text: "0" }, // 站点无积分系统
     },
   },
 
@@ -251,7 +250,6 @@ export default class Fappaizuri extends PrivateSite {
           "ratio",
           "levelName",
           "joinTime",
-          "bonus",
         ]) as Partial<IUserInfo>),
       };
 

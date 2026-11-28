@@ -4,12 +4,13 @@
  * @PTMDefinitions https://github.com/JustLookAtNow/pt_mate/blob/master/assets/sites/mteam.json
  */
 import type { AxiosRequestConfig, AxiosResponse } from "axios";
-import { set } from "es-toolkit/compat";
+import { get, set } from "es-toolkit/compat";
 import { build as buildDouban } from "@ptd/social/entity/douban.ts";
 import { build as buildImdb } from "@ptd/social/entity/imdb.ts";
 
 import {
   type ILevelRequirement,
+  type IUserInfo,
   ISearchInput,
   ISiteMetadata,
   ITorrent,
@@ -17,6 +18,7 @@ import {
   TSchemaMetadataListSelectors,
   ETorrentStatus,
 } from "../types";
+import { definedFilters } from "../utils/filter.ts";
 import PrivateSite from "../schemas/AbstractPrivateSite.ts";
 
 const siteCategory: { value: string; name: string; type: "normal" | "adult" }[] = [
@@ -178,6 +180,16 @@ export const siteMetadata: ISiteMetadata = {
     "uggcf://arkg.z-grnz.pp/",
   ],
 
+  /**
+   * announce 走独立的 `tracker.*` 域，与站点页（kp / ob / h5 等镜像域）不是父子关系：
+   * 父域兜底只能回溯到裸域，而裸域未登记，于是挂在该 tracker 上的种子在 MyClient 里
+   * 标不出站点归属、也补不上「按所属站点自动补标签」（#1734）。
+   * 2026-11-20 实测：该 announce 端点（rot13 见下值）返回 Cloudflare 403，域名存活、
+   * 源站被 CF 保护，未能拿到 bencode。
+   * 该站点 tags 含成人标记，按 checkSiteDefinition.ts 的要求写成 rot13。
+   */
+  trackerUrls: ["uggcf://genpxre.z-grnz.pp/"],
+
   category: [
     {
       name: "分类入口",
@@ -335,6 +347,7 @@ export const siteMetadata: ISiteMetadata = {
       id: { selector: "id" },
       title: { selector: "name" },
       subTitle: { selector: "smallDescr" },
+      cover: { selector: "imageList.0" },
       url: { selector: "id", filters: [{ name: "prepend", args: ["/detail/"] }] },
       // link: 不返回，在 class 中单独构造
       time: { selector: "createdDate", filters: [{ name: "parseTime" }] },
@@ -391,10 +404,19 @@ export const siteMetadata: ISiteMetadata = {
       },
       {
         requestConfig: { url: "/api/tracker/myPeerStatistics", method: "POST", responseType: "json" },
+        // 接口文档声明 uid 必填（不传时服务端虽会回落到当前 Key 对应用户，但显式传入更稳妥）
+        assertion: { id: "params.uid" },
         selectors: {
           seeding: { selector: "data.seederCount", filters: [{ name: "parseNumber" }] },
-          seedingSize: { selector: "data.seederSize", filters: [{ name: "parseNumber" }] },
           uploads: { selector: "data.uploadCount", filters: [{ name: "parseNumber" }] },
+        },
+      },
+      {
+        // 做种体积：站点网页「保種總體積」使用的就是该接口的 seedingSizeOver72h
+        requestConfig: { url: "/api/member/seedingStats", method: "POST", responseType: "json" },
+        assertion: { id: "params.userid" },
+        selectors: {
+          seedingSize: { selector: "data.seedingSizeOver72h", filters: [{ name: "parseNumber" }] },
         },
       },
       {
@@ -697,17 +719,19 @@ export default class MTeam extends PrivateSite {
     return torrent;
   }
 
-  private mapDiscountToTag(discount?: string | null): ITorrentTag | undefined {
-    switch (discount) {
-      case "FREE":
-        return { name: "Free", color: "blue" };
-      case "PERCENT_70":
-        return { name: "30%", color: "indigo" };
-      case "PERCENT_50":
-        return { name: "50%", color: "orange" };
-      default:
-        return undefined;
-    }
+  /**
+   * 站点折扣枚举 → 量系数，与 Jackett 的 `MTeamTp.cs` 对齐：
+   * `FREE → 下载 0`、`PERCENT_50 → 0.5`、`PERCENT_70 → 0.3`（减免 70% 即按 30% 计费），
+   * `_2X_*` 前缀表示双倍上传（上传 = 2），其余（含 NORMAL）按正常 1 计。
+   * Jackett 未列出的 `_2X_PERCENT_70` / `_2X` 按同一命名规则推得。
+   */
+  private mapDiscountToFactors(discount?: string | null): { download: number; upload: number } {
+    const normalized = (discount ?? "NORMAL").toUpperCase();
+    const upload = /^_?2X/.test(normalized) ? 2 : 1;
+    const base = normalized.replace(/^_?2X_?/, "");
+
+    const download = base === "FREE" ? 0 : base === "PERCENT_50" ? 0.5 : base === "PERCENT_70" ? 0.3 : 1;
+    return { download, upload };
   }
 
   protected override parseTorrentRowForTags(
@@ -715,25 +739,22 @@ export default class MTeam extends PrivateSite {
     row: IMTeamRawTorrent,
     searchConfig: ISearchInput,
   ): Partial<ITorrent> {
-    const tags: ITorrentTag[] = [];
-
-    // 优先处理全站促销规则
+    // 优先处理全站促销规则（Jackett 只读 status.discount，这里保留本站既有的 promotionRule 优先级）
+    let factors: { download: number; upload: number };
     if (row.status?.promotionRule) {
-      const globalDiscount = row.status.promotionRule.discount ?? "NORMAL";
-      const tag = this.mapDiscountToTag(globalDiscount);
-      if (tag) tags.push(tag);
-    } else {
+      factors = this.mapDiscountToFactors(row.status.promotionRule.discount ?? "NORMAL");
+    } else if (row.status?.mallSingleFree) {
       // 处理 成人区限时free
-      if (row.status?.mallSingleFree) {
-        tags.push({ name: "Free", color: "blue" });
-      } else {
-        // 其他促销状态 从 status.discount 中获取
-        const discount = row.status?.discount ?? "NORMAL";
-        const tag = this.mapDiscountToTag(discount);
-        if (tag) tags.push(tag);
-      }
+      factors = { download: 0, upload: 1 };
+    } else {
+      // 其他促销状态 从 status.discount 中获取
+      factors = this.mapDiscountToFactors(row.status?.discount ?? "NORMAL");
     }
 
+    torrent.downloadVolumeFactor = factors.download;
+    torrent.uploadVolumeFactor = factors.upload;
+
+    const tags: ITorrentTag[] = [];
     if (row.labelsNew && row.labelsNew.length > 0) {
       const uniqueLabels = Array.from(new Set(row.labelsNew)); // 去重
       tags.push(...uniqueLabels.map((x) => ({ name: x })));
@@ -741,6 +762,32 @@ export default class MTeam extends PrivateSite {
 
     torrent.tags = tags;
     return torrent;
+  }
+
+  /**
+   * 做种数。
+   *
+   * `/api/tracker/myPeerStatistics` 的 `seederCount` 对部分账号恒为 0（refs: #1702），
+   * 而站点前端取做种数用的是 `/api/tracker/myPeerStatus` 的 `data.seeder`，
+   * 因此在 tracker statistics 返回 0 时回落到后者。
+   */
+  protected async parseUserInfoForSeeding(userInfo: IUserInfo, dataDocument: any): Promise<IUserInfo> {
+    let seeding = definedFilters.parseNumber(get(dataDocument, "data.seederCount"));
+    if (!seeding) {
+      try {
+        const { data } = await this.request<IMTeamRawResp<{ seeder?: string | number }>>({
+          url: "/api/tracker/myPeerStatus",
+        });
+        if (data?.code === "0" && typeof data.data?.seeder !== "undefined") {
+          seeding = definedFilters.parseNumber(data.data.seeder);
+        }
+      } catch (error) {
+        console.warn("[MTeam] Failed to fetch myPeerStatus:", error);
+      }
+    }
+
+    userInfo.seeding = seeding;
+    return userInfo;
   }
 
   /**
